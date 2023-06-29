@@ -13,9 +13,11 @@ export default function App() {
   const [moveTo, setMoveTo] = useState(null);
   const [showPromotionDialog, setShowPromotionDialog] = useState(false);
   const [rightClickedSquares, setRightClickedSquares] = useState({});
-  const [moveSquares, setMoveSquares] = useState({});
+  const [moveSquares] = useState({});
+  const [gameFen, setGameFen] = useState()
   const [optionSquares, setOptionSquares] = useState({});
   const [playerId] = useState(localStorage.getItem("playerId"))
+
   const [gameId, setGameId] = useState(localStorage.getItem("gameId"));
   // Connect to the socket.io server
   const [gameDetails, setGameDetails] = useState(null)
@@ -29,25 +31,58 @@ export default function App() {
     }
   });
 
+  socket.on('opponent-made-move', ({ gameData, senderId, moveData }) => {
+    // Handle the opponent's move
+    // console.log(game.turn(), getColor().charAt(0) );
+    // if (playerId === senderId) {
+    //   return
+    // }
+
+    console.log(gameData);
+
+    socket.emit("get-game", { gameId: gameId })
+    // game.load(gameData.fen)
+
+    // const chess = new Chess(gameData.fen)
+   
+    // setGame(chess)
+    // Update your game state or perform any necessary actions
+  });
+
   useEffect(() => {
 
     if (gameId) {
       socket.emit("get-game", { gameId: gameId })
 
-      socket.on("game-details", ({data}) => {
+      socket.on("game-details", ({ data }) => {
         console.log(data);
-        setGameId(data.gameId)
+        // setGameId(data.gameId)
         setGameDetails(data)
-        game.load(data.fen)
+
+        if (!data.fen) {
+          console.log("nothing");
+          const chess = new Chess()
+          game.clear()
+          game.load(chess.fen())
+          setGame(chess)
+        } else {
+          console.log(data.fen, game.fen());
+          // const chess = new Chess(data.fen)
+          game.load(data.fen)
+          setGameFen(data.fen)
+          // game.clear()
+          // setTimeout(()=>{
+          //   game.load(data.fen)
+          // }, 3000)
+          // setGame(chess)
+        }
+
         localStorage.setItem("gameId", data.gameId)
       })
     }
 
   }, [gameId])
 
-  socket.on("opponent-made-move" , ({ gameId , moveData})=> {
-    console.log(gameId , moveData);
-  })
 
   function onDrop(sourceSquare, targetSquare, piece) {
 
@@ -65,7 +100,7 @@ export default function App() {
 
     validateGame(gameCopy)
     setGame(gameCopy);
-  
+
     const moveData = {
       fen: gameCopy.fen(),
       from: sourceSquare,
@@ -73,10 +108,19 @@ export default function App() {
       promotion: piece[1]?.toLowerCase() ?? "q",
     }
 
-    socket.emit("make-move", { gameId , playerId , moveData })
-    
+    setTimeout(() => {
+      makeMoveServer({ gameId, playerId, moveData })
+    }, 1000)
+
     return true;
   }
+
+  function makeMoveServer({ gameId, playerId, moveData }) {
+    // moveData.fen = game.fen()
+    // console.log(game.fen());
+    socket.emit("make-move", { gameId, playerId, moveData })
+  }
+
 
   function getMoveOptions(square) {
     const moves = game.moves({
@@ -178,9 +222,22 @@ export default function App() {
         if (hasMoveOptions) setMoveFrom(square);
         return;
       }
+
       validateGame(gameCopy)
 
       setGame(gameCopy);
+
+      const moveData = {
+        fen: gameCopy.fen(),
+        from: moveFrom,
+        to: moveTo,
+        promotion: "q",
+      }
+
+      setTimeout(() => {
+        makeMoveServer({ gameId, playerId, moveData })
+      }, 100)
+
       setMoveFrom("");
       setMoveTo(null);
       setOptionSquares({});
@@ -207,8 +264,8 @@ export default function App() {
     // console.log(moveFrom, moveTo);
     // if no piece passed then user has cancelled dialog,
     // don't make move and reset
+    const gameCopy = game; // Use spread operator or any other method to create a copy of game object
     if (piece) {
-      const gameCopy = game; // Use spread operator or any other method to create a copy of game object
 
       gameCopy.move({
         from: moveFrom,
@@ -218,6 +275,18 @@ export default function App() {
       validateGame(gameCopy)
       setGame(gameCopy);
     }
+
+    const moveData = {
+      fen: gameCopy.fen(),
+      from: moveFrom,
+      to: moveTo,
+      promotion: piece[1]?.toLowerCase() ?? "q",
+    }
+
+    setTimeout(() => {
+      makeMoveServer({ gameId, playerId, moveData })
+    }, 1000)
+
 
     setMoveFrom("");
     setMoveTo(null);
@@ -283,10 +352,10 @@ export default function App() {
     <div>
       <Socket gameId={gameId} setGameId={setGameId} />
 
-      {gameId &&
+      {gameDetails &&
         <Chessboard
           id="PremovesEnabled"
-          position={game.fen()}
+          position={gameFen}
           boardOrientation={boardColor}
           onPieceDrop={onDrop}
           onSquareClick={onSquareClick}
