@@ -1,6 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
+import Socket from './Socket';
+import io from 'socket.io-client';
+const apiUrl = 'http://localhost:3000';
+
 
 export default function App() {
   const [game, setGame] = useState(new Chess());
@@ -11,25 +15,44 @@ export default function App() {
   const [rightClickedSquares, setRightClickedSquares] = useState({});
   const [moveSquares, setMoveSquares] = useState({});
   const [optionSquares, setOptionSquares] = useState({});
+  const [playerId] = useState(localStorage.getItem("playerId"))
+  const [gameId, setGameId] = useState(localStorage.getItem("gameId"));
+  // Connect to the socket.io server
+  const [gameDetails, setGameDetails] = useState(null)
 
+  const apiUrl = 'http://localhost:3000';
 
-  function makeRandomMove() {
-    const possibleMoves = game.moves();
-    if (game.isGameOver() || game.isDraw() || possibleMoves.length === 0)
-      return;
+  const socket = io(apiUrl, {
+    withCredentials: true,
+    extraHeaders: {
+      "my-custom-header": "abcd"
+    }
+  });
 
-    const randomIndex = Math.floor(Math.random() * possibleMoves.length);
-    game.move(possibleMoves[randomIndex]);
+  useEffect(() => {
 
-    // Update the chessboard position after making a move
-    // chessboardRef.current.setPosition(game.fen());
+    if (gameId) {
+      socket.emit("get-game", { gameId: gameId })
 
-    const gameCopy = new Chess(game.fen());
+      socket.on("game-details", ({data}) => {
+        console.log(data);
+        setGameId(data.gameId)
+        setGameDetails(data)
+        game.load(data.fen)
+        localStorage.setItem("gameId", data.gameId)
+      })
+    }
 
-    setGame(gameCopy)
-  }
+  }, [gameId])
+
+  socket.on("opponent-made-move" , ({ gameId , moveData})=> {
+    console.log(gameId , moveData);
+  })
 
   function onDrop(sourceSquare, targetSquare, piece) {
+
+    if (game.turn() !== getColor().charAt(0)) return false;
+
     const gameCopy = new Chess(game.fen());
 
     const move = gameCopy.move({
@@ -42,9 +65,16 @@ export default function App() {
 
     validateGame(gameCopy)
     setGame(gameCopy);
-    // Delay the computer's move by using setTimeout
-    // setTimeout(makeRandomMove, 200);
+  
+    const moveData = {
+      fen: gameCopy.fen(),
+      from: sourceSquare,
+      to: targetSquare,
+      promotion: piece[1]?.toLowerCase() ?? "q",
+    }
 
+    socket.emit("make-move", { gameId , playerId , moveData })
+    
     return true;
   }
 
@@ -78,11 +108,13 @@ export default function App() {
   }
 
 
-
   function onSquareClick(square) {
     setRightClickedSquares({});
 
-    console.log("moveFrom: ", moveFrom);
+    if (game.turn() !== getColor().charAt(0)) return false;
+
+
+    // console.log("moveFrom: ", moveFrom);
 
     // from square
     if (!moveFrom) {
@@ -171,8 +203,8 @@ export default function App() {
 
 
   function onPromotionPieceSelect(piece) {
-
-    console.log(moveFrom, moveTo);
+    if (game.turn() !== getColor().charAt(0)) return false;
+    // console.log(moveFrom, moveTo);
     // if no piece passed then user has cancelled dialog,
     // don't make move and reset
     if (piece) {
@@ -235,31 +267,48 @@ export default function App() {
     }
   }
 
+  function getColor() {
+    let color = gameDetails?.color
+    if (playerId === gameDetails?.player1Id) {
+      return color
+    } else {
+      const opponent = color === "white" ? "black" : "white"
+      return opponent
+    }
+  }
+
+  const boardColor = getColor()
+
   return (
     <div>
-      <Chessboard
-        id="PremovesEnabled"
-        position={game.fen()}
-        onPieceDrop={onDrop}
-        onSquareClick={onSquareClick}
-        onSquareRightClick={onSquareRightClick}
-        onPieceDragBegin={dragStartHandler}
-        onDragOverSquare={dragHandler}
-        onPromotionPieceSelect={onPromotionPieceSelect}
-        customBoardStyle={{
-          borderRadius: "4px",
-          boxShadow: "0 2px 10px rgba(0,0,0,.5)",
-        }}
-        customSquareStyles={{
-          ...moveSquares,
-          ...optionSquares,
-          ...rightClickedSquares,
-        }}
+      <Socket gameId={gameId} setGameId={setGameId} />
 
-        promotionToSquare={moveTo}
-        showPromotionDialog={showPromotionDialog}
-        ref={chessboardRef}
-      />
+      {gameId &&
+        <Chessboard
+          id="PremovesEnabled"
+          position={game.fen()}
+          boardOrientation={boardColor}
+          onPieceDrop={onDrop}
+          onSquareClick={onSquareClick}
+          onSquareRightClick={onSquareRightClick}
+          onPieceDragBegin={dragStartHandler}
+          onDragOverSquare={dragHandler}
+          onPromotionPieceSelect={onPromotionPieceSelect}
+          customBoardStyle={{
+            borderRadius: "4px",
+            boxShadow: "0 2px 10px rgba(0,0,0,.5)",
+          }}
+          customSquareStyles={{
+            ...moveSquares,
+            ...optionSquares,
+            ...rightClickedSquares,
+          }}
+
+          promotionToSquare={moveTo}
+          showPromotionDialog={showPromotionDialog}
+          ref={chessboardRef}
+        />
+      }
     </div>
   );
 }
