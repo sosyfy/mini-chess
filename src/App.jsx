@@ -3,7 +3,6 @@ import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import Socket from './Socket';
 import io from 'socket.io-client';
-const apiUrl = 'http://localhost:3000';
 
 
 export default function App() {
@@ -13,11 +12,11 @@ export default function App() {
   const [moveTo, setMoveTo] = useState(null);
   const [showPromotionDialog, setShowPromotionDialog] = useState(false);
   const [rightClickedSquares, setRightClickedSquares] = useState({});
-  const [moveSquares] = useState({});
+  const [moveSquares, setMoveSquares] = useState({});
   const [gameFen, setGameFen] = useState()
   const [optionSquares, setOptionSquares] = useState({});
   const [playerId] = useState(localStorage.getItem("playerId"))
-
+  const [gameEndCause, setGameEndCause] = useState('')
   const [gameId, setGameId] = useState(localStorage.getItem("gameId"));
   // Connect to the socket.io server
   const [gameDetails, setGameDetails] = useState(null)
@@ -32,21 +31,8 @@ export default function App() {
   });
 
   socket.on('opponent-made-move', ({ gameData, senderId, moveData }) => {
-    // Handle the opponent's move
-    // console.log(game.turn(), getColor().charAt(0) );
-    // if (playerId === senderId) {
-    //   return
-    // }
-
-    console.log(gameData);
 
     socket.emit("get-game", { gameId: gameId })
-    // game.load(gameData.fen)
-
-    // const chess = new Chess(gameData.fen)
-   
-    // setGame(chess)
-    // Update your game state or perform any necessary actions
   });
 
   useEffect(() => {
@@ -55,26 +41,24 @@ export default function App() {
       socket.emit("get-game", { gameId: gameId })
 
       socket.on("game-details", ({ data }) => {
-        console.log(data);
+        // console.log(data);
         // setGameId(data.gameId)
         setGameDetails(data)
 
         if (!data.fen) {
-          console.log("nothing");
           const chess = new Chess()
+          game.reset()
           game.clear()
           game.load(chess.fen())
+          setGameFen(game.fen())
           setGame(chess)
         } else {
           console.log(data.fen, game.fen());
-          // const chess = new Chess(data.fen)
+
           game.load(data.fen)
           setGameFen(data.fen)
-          // game.clear()
-          // setTimeout(()=>{
-          //   game.load(data.fen)
-          // }, 3000)
-          // setGame(chess)
+          validateGame(game)
+
         }
 
         localStorage.setItem("gameId", data.gameId)
@@ -98,7 +82,7 @@ export default function App() {
 
     if (move === null) return false;
 
-    validateGame(gameCopy)
+    // validateGame(gameCopy)
     setGame(gameCopy);
 
     const moveData = {
@@ -223,9 +207,8 @@ export default function App() {
         return;
       }
 
-      validateGame(gameCopy)
-
       setGame(gameCopy);
+
 
       const moveData = {
         fen: gameCopy.fen(),
@@ -247,6 +230,8 @@ export default function App() {
 
 
   function onSquareRightClick(square) {
+    // console.log(square , "SQUARE");
+
     const color = "rgba(0, 0, 255, 0.4)";
     setRightClickedSquares({
       ...rightClickedSquares,
@@ -272,7 +257,7 @@ export default function App() {
         to: moveTo,
         promotion: piece.charAt(1).toLowerCase() ?? "q",
       });
-      validateGame(gameCopy)
+      // validateGame(gameCopy)
       setGame(gameCopy);
     }
 
@@ -308,33 +293,117 @@ export default function App() {
 
 
   function validateGame(game) {
+    // alert(game)
     const isCheck = game.inCheck();
     const isCheckmate = game.isCheckmate();
     const isStalemate = game.isStalemate();
     const isDraw = game.isDraw();
     const hasInsufficientMaterial = game.isInsufficientMaterial();
+    const isGameOver = game.isGameOver()
+
+
 
     if (isCheck) {
-      console.log("In check!");
-      // Perform actions or handle UI updates for being in check
-      // For example, change cell colors or display a message
+      const turn = game.turn();
+      const boardState = game.board();
+
+      let kingPosition;
+
+      if (turn === 'w') {
+        kingPosition = boardState.flat().find(piece => piece?.type === 'k' && piece.color === 'w').square;
+
+        const color = "rgba(255, 0, 0, 0.7)";
+        setMoveSquares({
+          ...moveSquares,
+          [kingPosition]:
+            moveSquares[kingPosition] &&
+              moveSquares[kingPosition].backgroundColor === color
+              ? undefined
+              : { backgroundColor: color },
+        });
+
+
+      } else {
+        kingPosition = boardState.flat().find(piece => piece?.type === 'k' && piece.color === 'b').square;
+        const color = "rgba(255, 0, 0, 0.7)";
+        setMoveSquares({
+          ...moveSquares,
+          [kingPosition]:
+            moveSquares[kingPosition] &&
+              moveSquares[kingPosition].backgroundColor === color
+              ? undefined
+              : { backgroundColor: color },
+        });
+      }
+
+    }
+
+    if (!isCheck) {
+      setMoveSquares({})
     }
 
     if (isCheckmate) {
-      console.log("Checkmate!");
-      // Perform actions or handle UI updates for checkmate
+      const turn = game.turn();
+      const boardState = game.board();
+
+      let kingPosition;
+
+      if (turn === 'w') {
+        kingPosition = boardState.flat().find(piece => piece?.type === 'k' && piece.color === 'w').square;
+
+        const color = "rgba(255, 0, 0, 0.7)";
+        setMoveSquares({
+          ...moveSquares,
+          [kingPosition]:
+            moveSquares[kingPosition] &&
+              moveSquares[kingPosition].backgroundColor === color
+              ? undefined
+              : { backgroundColor: color },
+        });
+
+
+      } else {
+        kingPosition = boardState.flat().find(piece => piece?.type === 'k' && piece.color === 'b').square;
+        const color = "rgba(255, 0, 0, 0.7)";
+        setMoveSquares({
+          ...moveSquares,
+          [kingPosition]:
+            moveSquares[kingPosition] &&
+              moveSquares[kingPosition].backgroundColor === color
+              ? undefined
+              : { backgroundColor: color },
+        });
+      }
+
     }
 
-    if (isStalemate) {
-      console.log("Stalemate!");
-      // Perform actions or handle UI updates for stalemate
+    if (isGameOver) {
+      let cause = " "
+      if (isCheckmate) {
+        const turn = game.turn()
+        if (turn == "w") {
+          cause = "Black won the game"
+        } else {
+          cause = "White won the game"
+        }
+
+      } else if (isDraw) {
+        cause = "Draw"
+      } else if (isStalemate) {
+        cause = "Game Ended Stalemate"
+      } else if (hasInsufficientMaterial) {
+        cause = "Game Ended Insufficient Material"
+      }
+
+      setGameEndCause(cause)
+      window.my_modal_2.showModal()
     }
 
-    if (isDraw || hasInsufficientMaterial) {
-      console.log("Draw or Insufficient Material!");
-      // Perform actions or handle UI updates for draw/insufficient material
-    }
+
   }
+
+
+
 
   function getColor() {
     let color = gameDetails?.color
@@ -348,36 +417,54 @@ export default function App() {
 
   const boardColor = getColor()
 
+
   return (
     <div>
       <Socket gameId={gameId} setGameId={setGameId} />
 
+     
       {gameDetails &&
-        <Chessboard
-          id="PremovesEnabled"
-          position={gameFen}
-          boardOrientation={boardColor}
-          onPieceDrop={onDrop}
-          onSquareClick={onSquareClick}
-          onSquareRightClick={onSquareRightClick}
-          onPieceDragBegin={dragStartHandler}
-          onDragOverSquare={dragHandler}
-          onPromotionPieceSelect={onPromotionPieceSelect}
-          customBoardStyle={{
-            borderRadius: "4px",
-            boxShadow: "0 2px 10px rgba(0,0,0,.5)",
-          }}
-          customSquareStyles={{
-            ...moveSquares,
-            ...optionSquares,
-            ...rightClickedSquares,
-          }}
+        <div className='max-w-3xl mx-auto md:mt-4 mt-32'>
+          <Chessboard
+            id="PremovesEnabled"
+            position={gameFen}
+            boardOrientation={boardColor}
+            onPieceDrop={onDrop}
+            onSquareClick={onSquareClick}
+            onSquareRightClick={onSquareRightClick}
+            onPieceDragBegin={dragStartHandler}
+            onDragOverSquare={dragHandler}
+            onPromotionPieceSelect={onPromotionPieceSelect}
+            customBoardStyle={{
+              borderRadius: "4px",
+              boxShadow: "0 2px 10px rgba(0,0,0,.5)",
+            }}
+            customSquareStyles={{
+              ...moveSquares,
+              ...optionSquares,
+              ...rightClickedSquares,
+            }}
 
-          promotionToSquare={moveTo}
-          showPromotionDialog={showPromotionDialog}
-          ref={chessboardRef}
-        />
+            promotionToSquare={moveTo}
+            showPromotionDialog={showPromotionDialog}
+            ref={chessboardRef}
+          />
+
+          <div className='mt-4'>
+            <p className='font-bold text-md font-sans'> { game.turn() == "b" ? "Black's turn to move" : "White's turn to move" } </p>
+          </div>
+        </div>
       }
+
+      <dialog id="my_modal_2" className="modal border-green-200 border-2">
+        <form method="dialog" className="modal-box border border-green-300">
+          <h3 className="font-bold text-lg text-center">Hello! <span className='uppercase text-green-400'>{localStorage.getItem("userName")} </span></h3>
+          <p className="py-4 text-center font-semibold text-[2rem] lg:text-[4rem]">{ gameEndCause }</p>
+        </form>
+        <form method="dialog" className="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
     </div>
   );
 }

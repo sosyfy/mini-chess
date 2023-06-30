@@ -20,7 +20,10 @@ const Socket = ({ gameId, setGameId }) => {
     const [color, setColor] = useState('white');
     const [userName, setUserName] = useState('');
     const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"));
-
+    const [alert, setAlert] = useState({
+        color: null,
+        message: null
+    })
     // Connect to the socket.io server
     const socket = io(apiUrl, {
         withCredentials: true,
@@ -52,7 +55,13 @@ const Socket = ({ gameId, setGameId }) => {
 
             localStorage.setItem('gameId', gameId); // Store gameId in local storage for persistence
 
-            console.log(`New game created with ID ${gameId}`);
+            setAlert({ ...alert, message: `New game created with ID ${gameId}`, color: "green" });
+            setTimeout(() => {
+                setAlert({
+                    color: null,
+                    message: null
+                })
+            }, 2000)
 
             // Add event listeners for real-time updates or moves here if needed
 
@@ -61,12 +70,25 @@ const Socket = ({ gameId, setGameId }) => {
 
 
         socket.on("connect_error", (err) => {
-            console.error(err.message);
+            setAlert({ ...alert, message: err.message, color: "red" });
+            setTimeout(() => {
+                setAlert({
+                    color: null,
+                    message: null
+                })
+            }, 2000)
+
         });
-      
+
 
         socket.on("disconnect", () => {
-            alert("You have been disconnected");
+            setAlert({ ...alert, message: "You have disconnected refresh the page to get back", color: "red" });
+            setTimeout(() => {
+                setAlert({
+                    color: null,
+                    message: null
+                })
+            }, 2000)
         });
 
     };
@@ -83,24 +105,37 @@ const Socket = ({ gameId, setGameId }) => {
 
             localStorage.setItem('gameId', gameId); // Store gameId in local storage for persistence
 
-            console.log(`Joined game with ID ${gameId}`);
-
+            // console.log(`Joined game with ID ${gameId}`);
+            setAlert({ ...alert, message: `Joined game with ID ${gameId}`, color: "green" });
+            setTimeout(() => {
+                setAlert({
+                    color: null,
+                    message: null
+                })
+            }, 2000)
             // Add event listeners for real-time updates or moves here if needed
             socket.off("join-game-failed"); // Remove error listener after successful join
 
         });
 
         socket.on("join-game-failed", (err) => {
-            console.error(err);
+            setAlert({ ...alert, message: err.message, color: "red" });
+            setTimeout(() => {
+                setAlert({
+                    color: null,
+                    message: null
+                })
+            }, 2000)
         });
     };
 
 
 
     return (
-        <div className='w-full my-8 px-12'>
+        <div className='w-full my-8 px-12 max-w-3xl mx-auto'>
             <div className="flex w-full justify-between">
                 <button className="btn" onClick={() => window.create.showModal()}> Create New Game </button>
+                <h2 className='btn'> {gameId}</h2>
                 <button className="btn" onClick={() => window.join.showModal()}>Join Game </button>
             </div>
 
@@ -122,7 +157,7 @@ const Socket = ({ gameId, setGameId }) => {
                     <div className="modal-action">
                         {/* if there is a button in form, it will close the modal */}
                         <button type="submit" className="btn">Create</button>
-                        <button className="btn" type='button' onClick={()=> window.create.close()}>Close</button>
+                        <button className="btn" type='button' onClick={() => window.create.close()}>Close</button>
                     </div>
                 </form>
             </dialog>
@@ -138,10 +173,25 @@ const Socket = ({ gameId, setGameId }) => {
                     <div className="modal-action">
                         {/* if there is a button in form, it will close the modal */}
                         <button type="submit" className="btn">Join</button>
-                        <button className="btn" type='button' onClick={()=> window.join.close()}>Close</button>
+                        <button className="btn" type='button' onClick={() => window.join.close()}>Close</button>
                     </div>
                 </form>
             </dialog>
+
+            {alert.message &&
+                <div id="alert-border-3" className={`flex fixed bottom-0 right-8 left-8  p-4 mb-4 text-${alert.color}-800 border-t-4 border-${alert.color}-300 bg-${alert.color}-50 dark:text-${alert.color}-400 dark:bg-gray-800 dark:border-${alert.color}-800`} role="alert">
+                    <svg className="flex-shrink-0 w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                    <div className="ml-3 text-md font-medium">
+                        {alert.message}
+                    </div>
+                    <button type="button" className="ml-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-200 inline-flex h-8 w-8 dark:bg-gray-800 dark:text-green-400 dark:hover:bg-gray-700" data-dismiss-target="#alert-border-3" aria-label="Close">
+                        <span className="sr-only">Dismiss</span>
+                        <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                    </button>
+                </div>
+            }
+
+
         </div>
     )
 }
