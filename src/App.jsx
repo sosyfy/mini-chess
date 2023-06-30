@@ -20,6 +20,7 @@ export default function App() {
   const [playerId] = useState(localStorage.getItem("playerId"))
   const [gameEndCause, setGameEndCause] = useState('')
   const [gameId, setGameId] = useState(localStorage.getItem("gameId"));
+  const [isInitial, setIsInitial] = useState(true)
   // Connect to the socket.io server
   const [gameDetails, setGameDetails] = useState(null)
 
@@ -29,6 +30,7 @@ export default function App() {
 
   const socket = io(apiUrl, {
     withCredentials: true,
+    transports: ['websocket'],
     extraHeaders: {
       "my-custom-header": "abcd"
     }
@@ -49,13 +51,13 @@ export default function App() {
   });
 
   socket.on('opponent-made-move', ({ data }) => {
-    console.log(data);
+    // console.log(data);
     const newGame = new Chess(data.fen)
-    newGame.load(data.fen)
-    setGameFen(data.fen)
+
     setGame(newGame)
+    setGameFen(data.fen)
     validateGame(game)
-    socket.emit("get-game", { gameId: gameId })
+
   });
 
   useEffect(() => {
@@ -64,19 +66,26 @@ export default function App() {
       socket.emit("get-game", { gameId: gameId })
 
       socket.on("game-details", ({ data }) => {
-        setGameDetails(data)
 
         if (!data.fen) {
+          console.log("sdfgf");
           const chess = new Chess()
           game.reset()
           game.clear()
           game.load(chess.fen())
           setGameFen(game.fen())
           setGame(chess)
+          setGameDetails(data)
         } else {
-          game.load(data.fen)
-          setGameFen(data.fen)
-          validateGame(game)
+          if (isInitial) {
+            console.log("initial");
+            const newGame = new Chess(data.fen)
+            newGame.load(data.fen)
+            setGameFen(data.fen)
+            setGame(newGame)
+            setIsInitial(false)
+            setGameDetails(data)
+          } 
         }
 
         localStorage.setItem("gameId", data.gameId)
