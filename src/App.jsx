@@ -3,6 +3,8 @@ import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import Socket from './Socket';
 import io from 'socket.io-client';
+const MAX_RETRIES = 15;
+let retryCount = 0;
 
 
 export default function App() {
@@ -22,6 +24,8 @@ export default function App() {
   const [gameDetails, setGameDetails] = useState(null)
 
   const apiUrl = 'https://chess.krescentadventures.com';
+  // const apiUrl = 'http://localhost:3000';
+
 
   const socket = io(apiUrl, {
     withCredentials: true,
@@ -30,9 +34,27 @@ export default function App() {
     }
   });
 
-  socket.on('opponent-made-move', () => {
+  socket.on('connect_error', (error) => {
+    console.error('An error occurred:', error);
 
-    socket.emit("get-game", { gameId: gameId })
+    // Retry logic
+    if (retryCount < MAX_RETRIES) {
+      console.log('Retrying...');
+      retryCount++;
+      socket.connect(); // Reconnect the socket
+    } else {
+      console.log('Max retry count reached. Stopping the connection.');
+      socket.close(); // Close the socket connection
+    }
+  });
+
+  socket.on('opponent-made-move', ({ data }) => {
+    console.log(data);
+
+    game.load(data.fen)
+    setGameFen(data.fen)
+    validateGame(game)
+    // socket.emit("get-game", { gameId: gameId })
   });
 
   useEffect(() => {
@@ -41,8 +63,6 @@ export default function App() {
       socket.emit("get-game", { gameId: gameId })
 
       socket.on("game-details", ({ data }) => {
-        // console.log(data);
-        // setGameId(data.gameId)
         setGameDetails(data)
 
         if (!data.fen) {
@@ -53,12 +73,9 @@ export default function App() {
           setGameFen(game.fen())
           setGame(chess)
         } else {
-          console.log(data.fen, game.fen());
-
           game.load(data.fen)
           setGameFen(data.fen)
           validateGame(game)
-
         }
 
         localStorage.setItem("gameId", data.gameId)
@@ -82,7 +99,6 @@ export default function App() {
 
     if (move === null) return false;
 
-    // validateGame(gameCopy)
     setGame(gameCopy);
 
     const moveData = {
@@ -92,16 +108,13 @@ export default function App() {
       promotion: piece[1]?.toLowerCase() ?? "q",
     }
 
-    setTimeout(() => {
-      makeMoveServer({ gameId, playerId, moveData })
-    }, 1000)
+    makeMoveServer({ gameId, playerId, moveData })
 
     return true;
   }
 
   function makeMoveServer({ gameId, playerId, moveData }) {
-    // moveData.fen = game.fen()
-    // console.log(game.fen());
+
     socket.emit("make-move", { gameId, playerId, moveData })
   }
 
@@ -139,7 +152,7 @@ export default function App() {
   function onSquareClick(square) {
     setRightClickedSquares({});
 
-    if (game.turn() !== getColor().charAt(0)) return false;
+    // if (game.turn() !== getColor().charAt(0)) return false;
 
 
     // console.log("moveFrom: ", moveFrom);
@@ -193,7 +206,7 @@ export default function App() {
       }
 
       // is normal move
-      const gameCopy = game;
+      const gameCopy = new Chess(game.fen());
       const move = gameCopy.move({
         from: moveFrom,
         to: square,
@@ -217,9 +230,9 @@ export default function App() {
         promotion: "q",
       }
 
-      setTimeout(() => {
-        makeMoveServer({ gameId, playerId, moveData })
-      }, 100)
+
+      makeMoveServer({ gameId, playerId, moveData })
+
 
       setMoveFrom("");
       setMoveTo(null);
@@ -246,10 +259,8 @@ export default function App() {
 
   function onPromotionPieceSelect(piece) {
     if (game.turn() !== getColor().charAt(0)) return false;
-    // console.log(moveFrom, moveTo);
-    // if no piece passed then user has cancelled dialog,
-    // don't make move and reset
-    const gameCopy = game; // Use spread operator or any other method to create a copy of game object
+
+    const gameCopy = new Chess(game.fen()); // Use spread operator or any other method to create a copy of game object
     if (piece) {
 
       gameCopy.move({
@@ -257,7 +268,7 @@ export default function App() {
         to: moveTo,
         promotion: piece.charAt(1).toLowerCase() ?? "q",
       });
-      // validateGame(gameCopy)
+
       setGame(gameCopy);
     }
 
@@ -268,10 +279,7 @@ export default function App() {
       promotion: piece[1]?.toLowerCase() ?? "q",
     }
 
-    setTimeout(() => {
-      makeMoveServer({ gameId, playerId, moveData })
-    }, 1000)
-
+    makeMoveServer({ gameId, playerId, moveData })
 
     setMoveFrom("");
     setMoveTo(null);
@@ -420,9 +428,9 @@ export default function App() {
 
   return (
     <div>
-      <Socket gameId={gameId} setGameId={setGameId} />
+      <Socket gameId={gameId} setGameId={setGameId} setGameDetails={setGameDetails} />
 
-     
+
       {gameDetails &&
         <div className='max-w-3xl mx-auto md:mt-4 mt-32'>
           <Chessboard
@@ -451,7 +459,7 @@ export default function App() {
           />
 
           <div className='mt-4'>
-            <p className='font-bold text-md font-sans'> { game.turn() == "b" ? "Black's turn to move" : "White's turn to move" } </p>
+            <p className='font-bold text-md font-sans'> {game.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
           </div>
         </div>
       }
@@ -459,7 +467,7 @@ export default function App() {
       <dialog id="my_modal_2" className="modal border-green-200 border-2">
         <form method="dialog" className="modal-box border border-green-300">
           <h3 className="font-bold text-lg text-center">Hello! <span className='uppercase text-green-400'>{localStorage.getItem("userName")} </span></h3>
-          <p className="py-4 text-center font-semibold text-[2rem] lg:text-[4rem]">{ gameEndCause }</p>
+          <p className="py-4 text-center font-semibold text-[2rem] lg:text-[4rem]">{gameEndCause}</p>
         </form>
         <form method="dialog" className="modal-backdrop">
           <button>close</button>

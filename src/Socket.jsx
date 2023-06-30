@@ -3,6 +3,10 @@ import io from 'socket.io-client';
 
 const apiUrl = 'https://chess.krescentadventures.com';
 
+// const apiUrl = 'http://localhost:3000';
+const MAX_RETRIES = 15;
+let retryCount = 0;
+
 function generateRandomString() {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let randomString = '';
@@ -16,7 +20,7 @@ function generateRandomString() {
 }
 
 
-const Socket = ({ gameId, setGameId }) => {
+const Socket = ({ gameId, setGameId, setGameDetails }) => {
     const [color, setColor] = useState('white');
     const [userName, setUserName] = useState('');
     const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"));
@@ -31,6 +35,22 @@ const Socket = ({ gameId, setGameId }) => {
             "my-custom-header": "abcd"
         }
     });
+
+
+    socket.on('connect_error', (error) => {
+        console.error('An error occurred:', error);
+
+        // Retry logic
+        if (retryCount < MAX_RETRIES) {
+            console.log('Retrying...');
+            retryCount++;
+            socket.connect(); // Reconnect the socket
+        } else {
+            console.log('Max retry count reached. Stopping the connection.');
+            socket.close(); // Close the socket connection
+        }
+    });
+
 
     useEffect(() => {
         if (!playerId) {
@@ -99,9 +119,10 @@ const Socket = ({ gameId, setGameId }) => {
         window.join.close();
         socket.emit('join-game', { gameId: gameId, playerId: playerId });
 
-        socket.on('player-joined', ({ gameId, playerId }) => {
+        socket.on('player-joined', ({ gameId, playerId, gameData }) => {
             setGameId(gameId);
             setPlayerId(playerId);
+            setGameDetails(gameData)
 
             localStorage.setItem('gameId', gameId); // Store gameId in local storage for persistence
 
@@ -135,7 +156,7 @@ const Socket = ({ gameId, setGameId }) => {
         <div className='w-full my-8 px-12 max-w-3xl mx-auto'>
             <div className="flex w-full justify-between">
                 <button className="btn" onClick={() => window.create.showModal()}> Create New Game </button>
-                <h2 className='btn'> {gameId}</h2>
+                <h2 className='px-4 py-3 bg-slate-700  font-bold rounded-lg text-center'> {gameId}</h2>
                 <button className="btn" onClick={() => window.join.showModal()}>Join Game </button>
             </div>
 
