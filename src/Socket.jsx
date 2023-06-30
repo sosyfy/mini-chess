@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
-const apiUrl = 'https://chess.krescentadventures.com';
+// const apiUrl = 'https://chess.krescentadventures.com';
 
-// const apiUrl = 'http://localhost:3000';
+const apiUrl = 'http://localhost:3000';
+
 const MAX_RETRIES = 15;
 let retryCount = 0;
 

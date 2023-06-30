@@ -23,8 +23,8 @@ export default function App() {
   // Connect to the socket.io server
   const [gameDetails, setGameDetails] = useState(null)
 
-  const apiUrl = 'https://chess.krescentadventures.com';
-  // const apiUrl = 'http://localhost:3000';
+  // const apiUrl = 'https://chess.krescentadventures.com';
+  const apiUrl = 'http://localhost:3000';
 
 
   const socket = io(apiUrl, {
@@ -50,11 +50,12 @@ export default function App() {
 
   socket.on('opponent-made-move', ({ data }) => {
     console.log(data);
-
-    game.load(data.fen)
+    const newGame = new Chess(data.fen)
+    newGame.load(data.fen)
     setGameFen(data.fen)
+    setGame(newGame)
     validateGame(game)
-    // socket.emit("get-game", { gameId: gameId })
+    socket.emit("get-game", { gameId: gameId })
   });
 
   useEffect(() => {
@@ -152,10 +153,7 @@ export default function App() {
   function onSquareClick(square) {
     setRightClickedSquares({});
 
-    // if (game.turn() !== getColor().charAt(0)) return false;
-
-
-    // console.log("moveFrom: ", moveFrom);
+    if (game.turn() !== getColor().charAt(0)) return false;
 
     // from square
     if (!moveFrom) {
