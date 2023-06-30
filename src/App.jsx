@@ -21,7 +21,7 @@ export default function App() {
   // Connect to the socket.io server
   const [gameDetails, setGameDetails] = useState(null)
 
-  const apiUrl = 'http://localhost:3000';
+  const apiUrl = 'https://chess.krescentadventures.com';
 
   const socket = io(apiUrl, {
     withCredentials: true,
@@ -30,7 +30,7 @@ export default function App() {
     }
   });
 
-  socket.on('opponent-made-move', ({ gameData, senderId, moveData }) => {
+  socket.on('opponent-made-move', () => {
 
     socket.emit("get-game", { gameId: gameId })
   });
