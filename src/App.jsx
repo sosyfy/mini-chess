@@ -23,8 +23,8 @@ export default function App() {
   // Connect to the socket.io server
   const [gameDetails, setGameDetails] = useState(null)
 
-  // const apiUrl = 'https://chess.krescentadventures.com';
-  const apiUrl = 'http://localhost:3000';
+  const apiUrl = 'https://chess.krescentadventures.com';
+  // const apiUrl = 'http://localhost:3000';
 
 
   const socket = io(apiUrl, {
