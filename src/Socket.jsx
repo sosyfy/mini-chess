@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
-const apiUrl = 'https://chess.krescentadventures.com';
+// const apiUrl = 'https://chess.krescentadventures.com';
 
-// const apiUrl = 'http://localhost:3000';
+const apiUrl = 'http://localhost:3000';
 
 const MAX_RETRIES = 15;
 let retryCount = 0;
@@ -30,28 +30,20 @@ const Socket = ({ gameId, setGameId, setGameDetails }) => {
         message: null
     })
     // Connect to the socket.io server
-    const socket = io(apiUrl, {
-        withCredentials: true,
-        extraHeaders: {
-            "my-custom-header": "abcd"
-        }
+    const socket = new WebSocket('ws://localhost:3000');
+
+    // Connection opened event
+    socket.addEventListener('open', (event) => {
+        console.log('WebSocket connection opened', event );
+        let eventName = "get-game"
+
+        const message = JSON.stringify({ event: eventName, data: { gameId : "PCQHVp"}});
+        socket.send(message);
     });
 
-
-    socket.on('connect_error', (error) => {
-        console.error('An error occurred:', error);
-
-        // Retry logic
-        if (retryCount < MAX_RETRIES) {
-            console.log('Retrying...');
-            retryCount++;
-            socket.connect(); // Reconnect the socket
-        } else {
-            console.log('Max retry count reached. Stopping the connection.');
-            socket.close(); // Close the socket connection
-        }
+    socket.addEventListener('message', (event) => {
+        console.log(event.data);
     });
-
 
     useEffect(() => {
         if (!playerId) {
@@ -68,11 +60,19 @@ const Socket = ({ gameId, setGameId, setGameDetails }) => {
         window.create.close()
 
         localStorage.setItem("userName", userName)
+         let message = JSON.stringify({ event: 'create-game', data : { playerId: playerId, color: color }});
+         socket.send(message)
 
-        socket.emit('create-game', { playerId: playerId, color: color });
+         
+        socket.addEventListener('message', (event) => {
+            const eventData = JSON.parse(event.data)
+            if (eventData.event !== "game-created" ) return
 
-        socket.on('game-created', ({ gameId }) => {
+            let gameId = eventData?.data?.gameId
+            
             setGameId(gameId);
+            
+            console.log(eventData.data);
 
             localStorage.setItem('gameId', gameId); // Store gameId in local storage for persistence
 
@@ -86,31 +86,31 @@ const Socket = ({ gameId, setGameId, setGameDetails }) => {
 
             // Add event listeners for real-time updates or moves here if needed
 
-            socket.off('game-creation-failed'); // Remove error listener after successful game creation
+            // socket.off('game-creation-failed'); // Remove error listener after successful game creation
         });
 
 
-        socket.on("connect_error", (err) => {
-            setAlert({ ...alert, message: err.message, color: "red" });
-            setTimeout(() => {
-                setAlert({
-                    color: null,
-                    message: null
-                })
-            }, 2000)
+        // socket.on("connect_error", (err) => {
+        //     setAlert({ ...alert, message: err.message, color: "red" });
+        //     setTimeout(() => {
+        //         setAlert({
+        //             color: null,
+        //             message: null
+        //         })
+        //     }, 2000)
 
-        });
+        // });
 
 
-        socket.on("disconnect", () => {
-            setAlert({ ...alert, message: "You have disconnected refresh the page to get back", color: "red" });
-            setTimeout(() => {
-                setAlert({
-                    color: null,
-                    message: null
-                })
-            }, 2000)
-        });
+        // socket.on("disconnect", () => {
+        //     setAlert({ ...alert, message: "You have disconnected refresh the page to get back", color: "red" });
+        //     setTimeout(() => {
+        //         setAlert({
+        //             color: null,
+        //             message: null
+        //         })
+        //     }, 2000)
+        // });
 
     };
 
@@ -118,59 +118,59 @@ const Socket = ({ gameId, setGameId, setGameDetails }) => {
     const handleJoinGame = (e) => {
         e.preventDefault();
         window.join.close();
-        socket.emit('join-game', { gameId: gameId, playerId: playerId });
+        // socket.emit('join-game', { gameId: gameId, playerId: playerId });
 
-        socket.on('player-joined', ({ gameId, playerId, gameData }) => {
-            setGameId(gameId);
-            setPlayerId(playerId);
-            setGameDetails(gameData)
+        // socket.on('player-joined', ({ gameId, playerId, gameData }) => {
+        //     setGameId(gameId);
+        //     setPlayerId(playerId);
+        //     setGameDetails(gameData)
 
-            localStorage.setItem('gameId', gameId); // Store gameId in local storage for persistence
+        //     localStorage.setItem('gameId', gameId); // Store gameId in local storage for persistence
 
-            // console.log(`Joined game with ID ${gameId}`);
-            setAlert({ ...alert, message: `Joined game with ID ${gameId}`, color: "green" });
-            setTimeout(() => {
-                setAlert({
-                    color: null,
-                    message: null
-                })
-            }, 2000)
-            // Add event listeners for real-time updates or moves here if needed
-            socket.off("join-game-failed"); // Remove error listener after successful join
+        //     // console.log(`Joined game with ID ${gameId}`);
+        //     setAlert({ ...alert, message: `Joined game with ID ${gameId}`, color: "green" });
+        //     setTimeout(() => {
+        //         setAlert({
+        //             color: null,
+        //             message: null
+        //         })
+        //     }, 2000)
+        //     // Add event listeners for real-time updates or moves here if needed
+        //     socket.off("join-game-failed"); // Remove error listener after successful join
 
-        });
+        // });
 
-        socket.on("join-game-failed", (err) => {
-            setAlert({ ...alert, message: err.message, color: "red" });
-            setTimeout(() => {
-                setAlert({
-                    color: null,
-                    message: null
-                })
-            }, 2000)
-        });
+        // socket.on("join-game-failed", (err) => {
+        //     setAlert({ ...alert, message: err.message, color: "red" });
+        //     setTimeout(() => {
+        //         setAlert({
+        //             color: null,
+        //             message: null
+        //         })
+        //     }, 2000)
+        // });
     };
 
 
 
     return (
-        <div className='w-full my-8 px-12 max-w-3xl mx-auto'>
-            <div className="flex w-full justify-between">
+        <div className='w-full max-w-3xl px-12 mx-auto my-8'>
+            <div className="flex justify-between w-full">
                 <button className="btn" onClick={() => window.create.showModal()}> Create New Game </button>
-                <h2 className='px-4 py-3 bg-slate-700  font-bold rounded-lg text-center'> {gameId}</h2>
+                <h2 className='px-4 py-3 font-bold text-center rounded-lg bg-slate-700'> {gameId}</h2>
                 <button className="btn" onClick={() => window.join.showModal()}>Join Game </button>
             </div>
 
             <dialog id="create" className="modal modal-middle sm:modal-middle">
                 <form method="dialog" className="modal-box" onSubmit={handleSubmit}>
-                    <h3 className="font-bold text-lg text-center">Hello!</h3>
+                    <h3 className="text-lg font-bold text-center">Hello!</h3>
                     <div className='grid gap-2'>
                         <label htmlFor="name" className=''>Your name</label>
-                        <input type="text" id='name' onChange={e => setUserName(e.target.value)} required placeholder="Enter your game name" className="input input-bordered input-accent w-full" />
+                        <input type="text" id='name' onChange={e => setUserName(e.target.value)} required placeholder="Enter your game name" className="w-full input input-bordered input-accent" />
                     </div>
                     <div className='grid gap-2 mt-4'>
                         <label htmlFor="name" className=''>Color to play as</label>
-                        <select className="select select-accent w-full" onChange={e => setColor(e.target.value)}>
+                        <select className="w-full select select-accent" onChange={e => setColor(e.target.value)}>
                             <option disabled defaultValue={"white"}>Black or White pieces?</option>
                             <option value={"white"}>White</option>
                             <option value={"black"}>Black</option>
@@ -186,10 +186,10 @@ const Socket = ({ gameId, setGameId, setGameDetails }) => {
 
             <dialog id="join" className="modal modal-middle sm:modal-middle">
                 <form method="dialog" className="modal-box" onSubmit={handleJoinGame}>
-                    <h3 className="font-bold text-lg text-center">Join a game </h3>
+                    <h3 className="text-lg font-bold text-center">Join a game </h3>
                     <div className='grid gap-2'>
                         <label htmlFor="name" className=''>Game Id</label>
-                        <input type="text" id='name' onChange={e => setGameId(e.target.value)} required placeholder="Enter game ID" className="input input-bordered input-accent w-full" />
+                        <input type="text" id='name' onChange={e => setGameId(e.target.value)} required placeholder="Enter game ID" className="w-full input input-bordered input-accent" />
                     </div>
 
                     <div className="modal-action">
@@ -203,7 +203,7 @@ const Socket = ({ gameId, setGameId, setGameDetails }) => {
             {alert.message &&
                 <div id="alert-border-3" className={`flex fixed bottom-0 right-8 left-8  p-4 mb-4 text-${alert.color}-800 border-t-4 border-${alert.color}-300 bg-${alert.color}-50 dark:text-${alert.color}-400 dark:bg-gray-800 dark:border-${alert.color}-800`} role="alert">
                     <svg className="flex-shrink-0 w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
-                    <div className="ml-3 text-md font-medium">
+                    <div className="ml-3 font-medium text-md">
                         {alert.message}
                     </div>
                     <button type="button" className="ml-auto -mx-1.5 -my-1.5 bg-green-50 text-green-500 rounded-lg focus:ring-2 focus:ring-green-400 p-1.5 hover:bg-green-200 inline-flex h-8 w-8 dark:bg-gray-800 dark:text-green-400 dark:hover:bg-gray-700" data-dismiss-target="#alert-border-3" aria-label="Close">

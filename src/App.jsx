@@ -20,43 +20,30 @@ export default function App() {
   const [playerId] = useState(localStorage.getItem("playerId"))
   const [gameEndCause, setGameEndCause] = useState('')
   const [gameId, setGameId] = useState(localStorage.getItem("gameId"));
-  const [isInitial, setIsInitial] = useState(true)
+ 
   // Connect to the socket.io server
   const [gameDetails, setGameDetails] = useState(null)
 
-  const apiUrl = 'https://chess.krescentadventures.com';
-  // const apiUrl = 'http://localhost:3000';
+  // const apiUrl = 'https://chess.krescentadventures.com';
+  const apiUrl = 'http://localhost:3000';
 
+  
 
   const socket = io(apiUrl, {
     withCredentials: true,
-    transports: ['websocket'],
+    transports: ["websocket"],
     extraHeaders: {
       "my-custom-header": "abcd"
     }
   });
 
-  socket.on('connect_error', (error) => {
-    console.error('An error occurred:', error);
-
-    // Retry logic
-    if (retryCount < MAX_RETRIES) {
-      console.log('Retrying...');
-      retryCount++;
-      socket.connect(); // Reconnect the socket
-    } else {
-      console.log('Max retry count reached. Stopping the connection.');
-      socket.close(); // Close the socket connection
-    }
-  });
-
+ 
   socket.on('opponent-made-move', ({ data }) => {
-    // console.log(data);
+ 
     const newGame = new Chess(data.fen)
-
     setGame(newGame)
     setGameFen(data.fen)
-    validateGame(game)
+    // validateGame(game)
 
   });
 
@@ -77,15 +64,14 @@ export default function App() {
           setGame(chess)
           setGameDetails(data)
         } else {
-          if (isInitial) {
             console.log("initial");
             const newGame = new Chess(data.fen)
             newGame.load(data.fen)
             setGameFen(data.fen)
             setGame(newGame)
-            setIsInitial(false)
+          
+            validateGame(newGame)
             setGameDetails(data)
-          } 
         }
 
         localStorage.setItem("gameId", data.gameId)
@@ -108,8 +94,13 @@ export default function App() {
     });
 
     if (move === null) return false;
+    
+    const newGame = new Chess(gameCopy.fen())
+    setGame(newGame)
+    setGameFen(newGame.fen())
+    validateGame(game)
+    setOptionSquares({});
 
-    setGame(gameCopy);
 
     const moveData = {
       fen: gameCopy.fen(),
@@ -161,9 +152,8 @@ export default function App() {
 
   function onSquareClick(square) {
     setRightClickedSquares({});
-
     if (game.turn() !== getColor().charAt(0)) return false;
-
+  
     // from square
     if (!moveFrom) {
       const hasMoveOptions = getMoveOptions(square);
@@ -227,8 +217,10 @@ export default function App() {
         return;
       }
 
-      setGame(gameCopy);
-
+      
+      setGame(gameCopy)
+      setGameFen(gameCopy.fen())
+      validateGame(gameCopy)
 
       const moveData = {
         fen: gameCopy.fen(),
@@ -276,7 +268,10 @@ export default function App() {
         promotion: piece.charAt(1).toLowerCase() ?? "q",
       });
 
-      setGame(gameCopy);
+      const newGame = new Chess(gameCopy.fen())
+      setGame(newGame)
+      setGameFen(newGame.fen())
+      validateGame(newGame)
     }
 
     const moveData = {
@@ -439,7 +434,7 @@ export default function App() {
 
 
       {gameDetails &&
-        <div className='max-w-3xl mx-auto md:mt-4 mt-32'>
+        <div className='max-w-3xl mx-auto mt-32 md:mt-4'>
           <Chessboard
             id="PremovesEnabled"
             position={gameFen}
@@ -466,14 +461,14 @@ export default function App() {
           />
 
           <div className='mt-4'>
-            <p className='font-bold text-md font-sans'> {game.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
+            <p className='font-sans font-bold text-md'> {game.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
           </div>
         </div>
       }
 
-      <dialog id="my_modal_2" className="modal border-green-200 border-2">
-        <form method="dialog" className="modal-box border border-green-300">
-          <h3 className="font-bold text-lg text-center">Hello! <span className='uppercase text-green-400'>{localStorage.getItem("userName")} </span></h3>
+      <dialog id="my_modal_2" className="border-2 border-green-200 modal">
+        <form method="dialog" className="border border-green-300 modal-box">
+          <h3 className="text-lg font-bold text-center">Hello! <span className='text-green-400 uppercase'>{localStorage.getItem("userName")} </span></h3>
           <p className="py-4 text-center font-semibold text-[2rem] lg:text-[4rem]">{gameEndCause}</p>
         </form>
         <form method="dialog" className="modal-backdrop">
