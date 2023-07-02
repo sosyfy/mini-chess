@@ -2,12 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import Socket from './Socket';
-import io from 'socket.io-client';
-const MAX_RETRIES = 15;
-let retryCount = 0;
 
 
 export default function App() {
+
   const [game, setGame] = useState(new Chess());
   const chessboardRef = useRef(null);
   const [moveFrom, setMoveFrom] = useState("");
@@ -20,62 +18,141 @@ export default function App() {
   const [playerId] = useState(localStorage.getItem("playerId"))
   const [gameEndCause, setGameEndCause] = useState('')
   const [gameId, setGameId] = useState(localStorage.getItem("gameId"));
- 
-  // Connect to the socket.io server
-  const [gameDetails, setGameDetails] = useState(null)
+  const [isConnected, setIsConnected] = useState(false);
+  const [gameDetails, setGameDetails] = useState(null);
+  const [alert, setAlert] = useState({
+    color: null,
+    message: null
+  })
 
-  // const apiUrl = 'https://chess.krescentadventures.com';
-  const apiUrl = 'http://localhost:3000';
 
-  
+  var socket;
 
-  const socket = io(apiUrl, {
-    withCredentials: true,
-    transports: ["websocket"],
-    extraHeaders: {
-      "my-custom-header": "abcd"
+  function connectWebSocket() {
+    socket = new WebSocket('ws://localhost:3000')
+    socket.onopen = () => {
+         console.log("connected");
+         setIsConnected(true) 
     }
-  });
+    socket.onmessage = (ev) => {
+      const eventData = JSON.parse(ev.data)
+      const data = eventData.data
+      console.log(eventData.event)
 
- 
-  socket.on('opponent-made-move', ({ data }) => {
- 
-    const newGame = new Chess(data.fen)
-    setGame(newGame)
-    setGameFen(data.fen)
-    // validateGame(game)
-
-  });
-
-  useEffect(() => {
-
-    if (gameId) {
-      socket.emit("get-game", { gameId: gameId })
-
-      socket.on("game-details", ({ data }) => {
-
-        if (!data.fen) {
-          console.log("sdfgf");
-          const chess = new Chess()
-          game.reset()
-          game.clear()
-          game.load(chess.fen())
-          setGameFen(game.fen())
-          setGame(chess)
-          setGameDetails(data)
-        } else {
-            console.log("initial");
+      switch (eventData.event) {
+        case 'opponent-made-move': {
+          const newGame = new Chess(data.fen)
+          setGame(newGame)
+          setGameFen(data.fen)
+          break;
+        }
+        case 'ping': {
+          setIsConnected(true)
+          break;
+        }
+        case 'game-details': {
+          if (!data.fen) {
+            console.log("sdfgf");
+            const chess = new Chess()
+            game.reset()
+            game.clear()
+            game.load(chess.fen())
+            setGameFen(game.fen())
+            setGame(chess)
+            setGameDetails(data)
+          } else {
+            console.log("initial", data);
             const newGame = new Chess(data.fen)
             newGame.load(data.fen)
             setGameFen(data.fen)
             setGame(newGame)
-          
             validateGame(newGame)
             setGameDetails(data)
+          }
+
+          setGameId(data.gameId)
+          localStorage.setItem("gameId", data.gameId)
+          break;
+        }
+        case 'game-created': {
+          setAlert({ ...alert, message: `New game created with ID ${gameId}`, color: "green" });
+          setTimeout(() => {
+            setAlert({
+              color: null,
+              message: null
+            })
+          }, 4000)
+          if (!data.fen) {
+            const chess = new Chess()
+            game.reset()
+            game.clear()
+            game.load(chess.fen())
+            setGameFen(game.fen())
+            setGame(chess)
+            setGameDetails(data)
+          } else {
+            const newGame = new Chess(data.fen)
+            newGame.load(data.fen)
+            setGameFen(data.fen)
+            setGame(newGame)
+            validateGame(newGame)
+            setGameDetails(data)
+          }
+
+          setGameId(data.gameId)
+          localStorage.setItem("gameId", data.gameId)
+          break
         }
 
-        localStorage.setItem("gameId", data.gameId)
-      })
+        case 'player-joined': {
+          const { gameId, gameData } = data
+          setGameDetails(gameData)
+          console.log(`Joined game with ID ${gameId}`);
+          setAlert({ ...alert, message: `Joined game with ID ${gameId}`, color: "green" });
+          setTimeout(() => {
+            setAlert({
+              color: null,
+              message: null
+            })
+          }, 4000)
+          const newGame = new Chess(gameData.fen)
+          newGame.load(gameData.fen)
+          setGameFen(gameData.fen)
+          setGame(newGame)
+          validateGame(newGame)
+          setGameDetails(gameData)
+          setGameId(gameId)
+          localStorage.setItem("gameId", gameId)
+          break
+        }
+        default:
+          break;
+      }
+    }
+
+    socket.onclose = () => {
+      setIsConnected(false)
+      console.log('WebSocket connection closed');
+    }
+
+
+    socket.onerror = (event) => {
+      setIsConnected(false)
+      console.log("error", event);
+    }
+  }
+
+
+  
+  
+  useEffect(() => {
+    
+    connectWebSocket()
+    if (gameId !== null) {
+      socket.onopen = () => {
+        let mess = JSON.stringify({ event: "get-game", data: { gameId: gameId } })
+        socket.send(mess)
+      }
     }
 
   }, [gameId])
@@ -94,7 +171,7 @@ export default function App() {
     });
 
     if (move === null) return false;
-    
+
     const newGame = new Chess(gameCopy.fen())
     setGame(newGame)
     setGameFen(newGame.fen())
@@ -115,8 +192,8 @@ export default function App() {
   }
 
   function makeMoveServer({ gameId, playerId, moveData }) {
-
-    socket.emit("make-move", { gameId, playerId, moveData })
+    let message = JSON.stringify({ event: "make-move", data: { gameId, playerId, moveData } })
+    socket.send(message)
   }
 
 
@@ -153,7 +230,7 @@ export default function App() {
   function onSquareClick(square) {
     setRightClickedSquares({});
     if (game.turn() !== getColor().charAt(0)) return false;
-  
+
     // from square
     if (!moveFrom) {
       const hasMoveOptions = getMoveOptions(square);
@@ -217,7 +294,7 @@ export default function App() {
         return;
       }
 
-      
+
       setGame(gameCopy)
       setGameFen(gameCopy.fen())
       validateGame(gameCopy)
@@ -430,7 +507,14 @@ export default function App() {
 
   return (
     <div>
-      <Socket gameId={gameId} setGameId={setGameId} setGameDetails={setGameDetails} />
+      <Socket
+        gameId={gameId}
+        setGameId={setGameId}
+        isConnected={isConnected}
+        socket={socket}
+        alert={alert}
+        setAlert={setAlert}
+      />
 
 
       {gameDetails &&

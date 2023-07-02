@@ -1,12 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import io from 'socket.io-client';
-
-// const apiUrl = 'https://chess.krescentadventures.com';
-
-const apiUrl = 'http://localhost:3000';
-
-const MAX_RETRIES = 15;
-let retryCount = 0;
 
 function generateRandomString() {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -21,134 +13,77 @@ function generateRandomString() {
 }
 
 
-const Socket = ({ gameId, setGameId, setGameDetails }) => {
+// eslint-disable-next-line react-refresh/only-export-components
+
+
+
+
+const Socket = ({ gameId, setGameId, isConnected, socket , alert , setAlert }) => {
     const [color, setColor] = useState('white');
     const [userName, setUserName] = useState('');
     const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"));
-    const [alert, setAlert] = useState({
-        color: null,
-        message: null
-    })
     // Connect to the socket.io server
-    const socket = new WebSocket('ws://localhost:3000');
+//    if (isConnected) {
+    //    socket.onmessage = (ev) => {
+    //        const eventData = JSON.parse(ev.data)
+       
+    //        switch (eventData.event) {
+    //            case 'join-game-failed': {
+    //                setAlert({ ...alert, message: eventData.data, color: "red" });
+    //                setTimeout(() => {
+    //                    setAlert({
+    //                        color: null,
+    //                        message: null
+    //                    })
+    //                }, 3000)
+                   
+    //                break
+    //            }
+    //            default:
+    //                break;
+    //        }
+    //    }
+   
+    //    socket.onopen = () => {
+    //        setTimeout(() => {
+    //            setAlert({
+    //                color: null,
+    //                message: null
+    //            })
+    //        }, 2000)
+    //    }
+   
+    //    socket.onclose = () => {
+    //        setAlert({ ...alert, message: "You have disconnected refresh the page to get back", color: "red" });
+    //    };
+//    }
 
-    // Connection opened event
-    socket.addEventListener('open', (event) => {
-        console.log('WebSocket connection opened', event );
-        let eventName = "get-game"
-
-        const message = JSON.stringify({ event: eventName, data: { gameId : "PCQHVp"}});
-        socket.send(message);
-    });
-
-    socket.addEventListener('message', (event) => {
-        console.log(event.data);
-    });
 
     useEffect(() => {
         if (!playerId) {
-            // Generate playerId and store it in local storage
             const generatedPlayerId = generateRandomString();
             localStorage.setItem('playerId', generatedPlayerId);
             setPlayerId(generatedPlayerId)
         }
+    }, [playerId])
 
-    }, [])
-    // Function to handle form submission and create a new game
+    //  create a new game
     const handleSubmit = (e) => {
         e.preventDefault();
         window.create.close()
 
         localStorage.setItem("userName", userName)
-         let message = JSON.stringify({ event: 'create-game', data : { playerId: playerId, color: color }});
-         socket.send(message)
-
-         
-        socket.addEventListener('message', (event) => {
-            const eventData = JSON.parse(event.data)
-            if (eventData.event !== "game-created" ) return
-
-            let gameId = eventData?.data?.gameId
-            
-            setGameId(gameId);
-            
-            console.log(eventData.data);
-
-            localStorage.setItem('gameId', gameId); // Store gameId in local storage for persistence
-
-            setAlert({ ...alert, message: `New game created with ID ${gameId}`, color: "green" });
-            setTimeout(() => {
-                setAlert({
-                    color: null,
-                    message: null
-                })
-            }, 2000)
-
-            // Add event listeners for real-time updates or moves here if needed
-
-            // socket.off('game-creation-failed'); // Remove error listener after successful game creation
-        });
-
-
-        // socket.on("connect_error", (err) => {
-        //     setAlert({ ...alert, message: err.message, color: "red" });
-        //     setTimeout(() => {
-        //         setAlert({
-        //             color: null,
-        //             message: null
-        //         })
-        //     }, 2000)
-
-        // });
-
-
-        // socket.on("disconnect", () => {
-        //     setAlert({ ...alert, message: "You have disconnected refresh the page to get back", color: "red" });
-        //     setTimeout(() => {
-        //         setAlert({
-        //             color: null,
-        //             message: null
-        //         })
-        //     }, 2000)
-        // });
-
+        let message = JSON.stringify({ event: 'create-game', data: { playerId: playerId, color: color } });
+        socket.send(message)
     };
 
-    // Function to join an existing game
+    // join an existing game
     const handleJoinGame = (e) => {
         e.preventDefault();
         window.join.close();
-        // socket.emit('join-game', { gameId: gameId, playerId: playerId });
-
-        // socket.on('player-joined', ({ gameId, playerId, gameData }) => {
-        //     setGameId(gameId);
-        //     setPlayerId(playerId);
-        //     setGameDetails(gameData)
-
-        //     localStorage.setItem('gameId', gameId); // Store gameId in local storage for persistence
-
-        //     // console.log(`Joined game with ID ${gameId}`);
-        //     setAlert({ ...alert, message: `Joined game with ID ${gameId}`, color: "green" });
-        //     setTimeout(() => {
-        //         setAlert({
-        //             color: null,
-        //             message: null
-        //         })
-        //     }, 2000)
-        //     // Add event listeners for real-time updates or moves here if needed
-        //     socket.off("join-game-failed"); // Remove error listener after successful join
-
-        // });
-
-        // socket.on("join-game-failed", (err) => {
-        //     setAlert({ ...alert, message: err.message, color: "red" });
-        //     setTimeout(() => {
-        //         setAlert({
-        //             color: null,
-        //             message: null
-        //         })
-        //     }, 2000)
-        // });
+        
+        let message = JSON.stringify({ event: 'join-game', data: { gameId: gameId, playerId: playerId } });
+        socket.send(message)
     };
 
 
