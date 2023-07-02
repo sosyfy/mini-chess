@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import Socket from './Socket';
+import useWebSocket from 'react-use-websocket';
 
 
 export default function App() {
@@ -25,16 +26,22 @@ export default function App() {
     message: null
   })
 
+  const { sendMessage } = useWebSocket('ws://localhost:3000', {
+    onOpen: () => {
+      console.log("connected");
+      setTimeout(() => {
+        setAlert({
+          color: null,
+          message: null
+        })
+      }, 2000)
 
-  var socket;
-
-  function connectWebSocket() {
-    socket = new WebSocket('ws://localhost:3000')
-    socket.onopen = () => {
-         console.log("connected");
-         setIsConnected(true) 
-    }
-    socket.onmessage = (ev) => {
+      let mess = JSON.stringify({ event: "get-game", data: { gameId: gameId } })
+      sendMessage(mess)
+      
+      setIsConnected(true)
+    },
+    onMessage: (ev) => {
       const eventData = JSON.parse(ev.data)
       const data = eventData.data
       console.log(eventData.event)
@@ -44,6 +51,9 @@ export default function App() {
           const newGame = new Chess(data.fen)
           setGame(newGame)
           setGameFen(data.fen)
+          validateGame(newGame)
+
+          console.log(newGame.history());
           break;
         }
         case 'ping': {
@@ -125,34 +135,42 @@ export default function App() {
           localStorage.setItem("gameId", gameId)
           break
         }
+
+        case 'join-game-failed': {
+          setAlert({ ...alert, message: eventData.data, color: "red" });
+          setTimeout(() => {
+            setAlert({
+              color: null,
+              message: null
+            })
+          }, 3000)
+
+          break
+        }
         default:
           break;
       }
-    }
+    },
 
-    socket.onclose = () => {
+    onClose: () => {
       setIsConnected(false)
+      setAlert({ ...alert, message: "You have disconnected refresh the page to get back", color: "red" });
       console.log('WebSocket connection closed');
-    }
+    },
 
-
-    socket.onerror = (event) => {
+    onError: (event) => {
       setIsConnected(false)
       console.log("error", event);
     }
-  }
+  });
 
+ 
 
-  
-  
   useEffect(() => {
     
-    connectWebSocket()
     if (gameId !== null) {
-      socket.onopen = () => {
-        let mess = JSON.stringify({ event: "get-game", data: { gameId: gameId } })
-        socket.send(mess)
-      }
+      let mess = JSON.stringify({ event: "get-game", data: { gameId: gameId } })
+      sendMessage(mess)
     }
 
   }, [gameId])
@@ -193,7 +211,7 @@ export default function App() {
 
   function makeMoveServer({ gameId, playerId, moveData }) {
     let message = JSON.stringify({ event: "make-move", data: { gameId, playerId, moveData } })
-    socket.send(message)
+    sendMessage(message)
   }
 
 
@@ -510,10 +528,8 @@ export default function App() {
       <Socket
         gameId={gameId}
         setGameId={setGameId}
-        isConnected={isConnected}
-        socket={socket}
+        socket={sendMessage}
         alert={alert}
-        setAlert={setAlert}
       />
 
 

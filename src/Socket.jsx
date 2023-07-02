@@ -12,53 +12,10 @@ function generateRandomString() {
     return randomString;
 }
 
-
-// eslint-disable-next-line react-refresh/only-export-components
-
-
-
-
-const Socket = ({ gameId, setGameId, isConnected, socket , alert , setAlert }) => {
+const Socket = ({ gameId, setGameId,  socket , alert }) => {
     const [color, setColor] = useState('white');
     const [userName, setUserName] = useState('');
-    const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"));
-    // Connect to the socket.io server
-//    if (isConnected) {
-    //    socket.onmessage = (ev) => {
-    //        const eventData = JSON.parse(ev.data)
-       
-    //        switch (eventData.event) {
-    //            case 'join-game-failed': {
-    //                setAlert({ ...alert, message: eventData.data, color: "red" });
-    //                setTimeout(() => {
-    //                    setAlert({
-    //                        color: null,
-    //                        message: null
-    //                    })
-    //                }, 3000)
-                   
-    //                break
-    //            }
-    //            default:
-    //                break;
-    //        }
-    //    }
-   
-    //    socket.onopen = () => {
-    //        setTimeout(() => {
-    //            setAlert({
-    //                color: null,
-    //                message: null
-    //            })
-    //        }, 2000)
-    //    }
-   
-    //    socket.onclose = () => {
-    //        setAlert({ ...alert, message: "You have disconnected refresh the page to get back", color: "red" });
-    //    };
-//    }
-
-
+    const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"))
     useEffect(() => {
         if (!playerId) {
             const generatedPlayerId = generateRandomString();
@@ -74,7 +31,7 @@ const Socket = ({ gameId, setGameId, isConnected, socket , alert , setAlert }) =
 
         localStorage.setItem("userName", userName)
         let message = JSON.stringify({ event: 'create-game', data: { playerId: playerId, color: color } });
-        socket.send(message)
+        socket(message)
     };
 
     // join an existing game
@@ -83,13 +40,13 @@ const Socket = ({ gameId, setGameId, isConnected, socket , alert , setAlert }) =
         window.join.close();
         
         let message = JSON.stringify({ event: 'join-game', data: { gameId: gameId, playerId: playerId } });
-        socket.send(message)
+        socket(message)
     };
 
 
 
     return (
-        <div className='w-full max-w-3xl px-12 mx-auto my-8'>
+        <div className='w-full max-w-3xl px-2 mx-auto my-8 lg:px-12'>
             <div className="flex justify-between w-full">
                 <button className="btn" onClick={() => window.create.showModal()}> Create New Game </button>
                 <h2 className='px-4 py-3 font-bold text-center rounded-lg bg-slate-700'> {gameId}</h2>
