@@ -19,14 +19,14 @@ export default function App() {
   const [playerId] = useState(localStorage.getItem("playerId"))
   const [gameEndCause, setGameEndCause] = useState('')
   const [gameId, setGameId] = useState(localStorage.getItem("gameId"));
-  const [isConnected, setIsConnected] = useState(false);
+  const [setIsConnected] = useState(false);
   const [gameDetails, setGameDetails] = useState(null);
   const [alert, setAlert] = useState({
     color: null,
     message: null
   })
 
-  const { sendMessage } = useWebSocket('ws://localhost:3000', {
+  const { sendMessage } = useWebSocket('wss://chess.krescentadventures.com', {
     onOpen: () => {
       console.log("connected");
       setTimeout(() => {
@@ -173,6 +173,7 @@ export default function App() {
       sendMessage(mess)
     }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId])
 
 
@@ -354,7 +355,7 @@ export default function App() {
   function onPromotionPieceSelect(piece) {
     if (game.turn() !== getColor().charAt(0)) return false;
 
-    const gameCopy = new Chess(game.fen()); // Use spread operator or any other method to create a copy of game object
+    const gameCopy = new Chess(game.fen()); 
     if (piece) {
 
       gameCopy.move({
@@ -398,7 +399,6 @@ export default function App() {
 
 
   function validateGame(game) {
-    // alert(game)
     const isCheck = game.inCheck();
     const isCheckmate = game.isCheckmate();
     const isStalemate = game.isStalemate();

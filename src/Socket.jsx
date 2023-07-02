@@ -12,7 +12,7 @@ function generateRandomString() {
     return randomString;
 }
 
-const Socket = ({ gameId, setGameId,  socket , alert }) => {
+const Socket = ({ gameId, setGameId, socket, alert }) => {
     const [color, setColor] = useState('white');
     const [userName, setUserName] = useState('');
     const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"))
@@ -38,7 +38,7 @@ const Socket = ({ gameId, setGameId,  socket , alert }) => {
     const handleJoinGame = (e) => {
         e.preventDefault();
         window.join.close();
-        
+
         let message = JSON.stringify({ event: 'join-game', data: { gameId: gameId, playerId: playerId } });
         socket(message)
     };
@@ -69,7 +69,7 @@ const Socket = ({ gameId, setGameId,  socket , alert }) => {
                         </select>
                     </div>
                     <div className="modal-action">
-                        {/* if there is a button in form, it will close the modal */}
+
                         <button type="submit" className="btn">Create</button>
                         <button className="btn" type='button' onClick={() => window.create.close()}>Close</button>
                     </div>
@@ -85,7 +85,6 @@ const Socket = ({ gameId, setGameId,  socket , alert }) => {
                     </div>
 
                     <div className="modal-action">
-                        {/* if there is a button in form, it will close the modal */}
                         <button type="submit" className="btn">Join</button>
                         <button className="btn" type='button' onClick={() => window.join.close()}>Close</button>
                     </div>
