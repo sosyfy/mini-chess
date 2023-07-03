@@ -7,10 +7,14 @@ import joinSound from "./assets/sounds/public_sound_standard_SocialNotify.mp3"
 import captureSound from "./assets/sounds/public_sound_standard_Capture.mp3"
 import moveSound from "./assets/sounds/public_sound_standard_Move.mp3"
 import gameEndSound from './assets/sounds/public_sound_standard_GenericNotify.mp3'
+import { useAtom, useAtomValue } from 'jotai';
+import { atomWithStorage } from 'jotai/utils'
+import { playerAtom } from './atoms';
+const gameIdAtom = atomWithStorage(null)
+
 
 
 export default function App() {
-
   const [game, setGame] = useState(new Chess());
   const chessboardRef = useRef(null);
   const [moveFrom, setMoveFrom] = useState("");
@@ -18,18 +22,22 @@ export default function App() {
   const [showPromotionDialog, setShowPromotionDialog] = useState(false);
   const [rightClickedSquares, setRightClickedSquares] = useState({});
   const [moveSquares, setMoveSquares] = useState({});
-  const [gameFen, setGameFen] = useState()
   const [optionSquares, setOptionSquares] = useState({});
-  const [playerId] = useState(localStorage.getItem("playerId"))
+  const playerId = useAtomValue(playerAtom)
+
   const [gameEndCause, setGameEndCause] = useState('')
-  const [gameId, setGameId] = useState(localStorage.getItem("gameId"));
+  const [gameId, setGameId] = useAtom(gameIdAtom);
+
   const [gameDetails, setGameDetails] = useState(null);
   const [alert, setAlert] = useState({
     color: null,
     message: null
   })
 
-  const { sendMessage } = useWebSocket('ws://localhost:3000', {
+  const [colouredMove, setColouredMove] = useState({})
+
+
+  const { sendMessage } = useWebSocket('wss://chess.krescentadventures.com', {
     onOpen: () => {
       console.log("connected");
       setAlert({ ...alert, message: `Connected`, color: "green" });
@@ -50,12 +58,21 @@ export default function App() {
 
       switch (eventData.event) {
         case 'opponent-made-move': {
-          const newGame = new Chess(data.fen)
-          setGame(newGame)
-          setGameFen(data.fen)
-          validateGame(newGame)
+          console.log("move", data);
 
-          console.log(newGame.history());
+          game.move({
+            from: data.from,
+            to: data.to,
+            promotion: data.promotion
+          })
+
+          setColouredMove({
+            [data.to]: { background: "rgba(255, 255, 0, 0.4)" },
+            [data.from]: { background: "rgba(255, 255, 0, 0.3)" }
+          })
+
+          validateGame(game)
+
           break;
         }
         case 'ping': {
@@ -65,24 +82,19 @@ export default function App() {
           if (!data?.fen) {
             console.log("sdfgf");
             const chess = new Chess()
-            game.reset()
-            game.clear()
-            game.load(chess.fen())
-            setGameFen(game.fen())
+            game?.load(chess.fen())
+
             setGame(chess)
             setGameDetails(data)
           } else {
             console.log("initial", data);
-            const newGame = new Chess(data.fen)
-            newGame.load(data.fen)
-            setGameFen(data.fen)
-            setGame(newGame)
-            validateGame(newGame)
+            game.load(data.fen)
+            validateGame(game)
             setGameDetails(data)
           }
 
-          setGameId(data.gameId)
-          localStorage.setItem("gameId", data.gameId)
+          setGameId(data?.gameId)
+          localStorage.setItem("gameId", data?.gameId)
           break;
         }
         case 'game-created': {
@@ -93,20 +105,14 @@ export default function App() {
               message: null
             })
           }, 4000)
+          playSound(joinSound)
           if (!data.fen) {
             const chess = new Chess()
             game.reset()
             game.clear()
             game.load(chess.fen())
-            setGameFen(game.fen())
+
             setGame(chess)
-            setGameDetails(data)
-          } else {
-            const newGame = new Chess(data.fen)
-            newGame.load(data.fen)
-            setGameFen(data.fen)
-            setGame(newGame)
-            validateGame(newGame)
             setGameDetails(data)
           }
 
@@ -117,6 +123,7 @@ export default function App() {
 
         case 'player-joined': {
           const { gameId, gameData } = data
+          playSound(joinSound)
           setGameDetails(gameData)
           console.log(`Joined game with ID ${gameId}`);
           setAlert({ ...alert, message: `Joined game with ID ${gameId}`, color: "green" });
@@ -126,11 +133,9 @@ export default function App() {
               message: null
             })
           }, 4000)
-          const newGame = new Chess(gameData.fen)
-          newGame.load(gameData.fen)
-          setGameFen(gameData.fen)
-          setGame(newGame)
-          validateGame(newGame)
+
+          game.load(gameData.fen)
+          validateGame(game)
           setGameDetails(gameData)
           setGameId(gameId)
           localStorage.setItem("gameId", gameId)
@@ -173,50 +178,75 @@ export default function App() {
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId])
+  }, [])
 
   function makeSound(move) {
-    const gam = game.fen()
-    console.log(gam);
+    if (move.flags.includes('c')) {
+      // Captured piece
+      playSound(captureSound);
+    } else if (move.flags.includes('e')) {
+      // En passant capture
+      playSound(captureSound);
+    } else if (move.flags.includes('k')) {
+      // Kingside castle
+      playSound(moveSound);
+    } else if (move.flags.includes('q')) {
+      // Queenside castle
+      playSound(moveSound);
+    } else if (move.flags.includes('p')) {
+      // Promoted to a new piece
+      playSound(moveSound);
+    } else {
+      // Normal move
+      playSound(moveSound);
+    }
+
+    if (game.isGameOver()) {
+      playSound(gameEndSound);
+    }
   }
+
+  function playSound(soundFile) {
+    const audio = new Audio(soundFile);
+    audio.play()
+  }
+
 
   function onDrop(sourceSquare, targetSquare, piece) {
 
     if (game.turn() !== getColor().charAt(0)) return false;
-
-    const gameCopy = new Chess(game.fen());
-
-    const move = gameCopy.move({
+    console.log("game", game);
+    setColouredMove({})
+    const move = game.move({
       from: sourceSquare,
       to: targetSquare,
       promotion: piece[1]?.toLowerCase() ?? "q",
     });
 
     if (move === null) return false;
-
-    const newGame = new Chess(gameCopy.fen())
-    setGame(newGame)
-    setGameFen(newGame.fen())
+    setColouredMove({
+      [move.to]: { background: "rgba(255, 255, 0, 0.4)" },
+      [move.from]: { background: "rgba(255, 255, 0, 0.3)" }
+    })
     validateGame(game)
     setOptionSquares({});
 
 
     const moveData = {
-      fen: gameCopy.fen(),
-      from: sourceSquare,
-      to: targetSquare,
-      promotion: piece[1]?.toLowerCase() ?? "q",
+      fen: game.fen(),
+      move: move
     }
 
-    makeMoveServer({ gameId, playerId, moveData })
+    makeMoveServer({ gameId, playerId, moveData, move })
 
     return true;
   }
 
-  function makeMoveServer({ gameId, playerId, moveData }) {
+  function makeMoveServer({ gameId, playerId, moveData, move }) {
     let message = JSON.stringify({ event: "make-move", data: { gameId, playerId, moveData } })
     sendMessage(message)
-    makeSound()
+    console.log("sent", message);
+    makeSound(move)
   }
 
 
@@ -251,9 +281,10 @@ export default function App() {
 
 
   function onSquareClick(square) {
-    setRightClickedSquares({});
-    // if (game.turn() !== getColor().charAt(0)) return false;
 
+    setRightClickedSquares({});
+    if (game.turn() !== getColor().charAt(0)) return false;
+    setColouredMove({})
     // from square
     if (!moveFrom) {
       const hasMoveOptions = getMoveOptions(square);
@@ -303,14 +334,16 @@ export default function App() {
       }
 
       // is normal move
-      const gameCopy = new Chess(game.fen());
       const move = game.move({
         from: moveFrom,
         to: square,
         promotion: "q",
       });
 
-
+      setColouredMove({
+        [move.to]: { background: "rgba(255, 255, 0, 0.45)" },
+        [move.from]: { background: "rgba(255, 255, 0, 0.4)" }
+      })
       // if invalid, setMoveFrom and getMoveOptions
       if (move === null) {
         const hasMoveOptions = getMoveOptions(square);
@@ -318,19 +351,16 @@ export default function App() {
         return;
       }
 
-      console.log(gameCopy.history());
+      console.log(game.history());
 
-      setGame(gameCopy)
-      setGameFen(gameCopy.fen())
-      validateGame(gameCopy)
+      validateGame(game)
 
       const moveData = {
-        fen: gameCopy.fen(),
+        fen: game.fen(),
         move: move
       }
 
-
-      makeMoveServer({ gameId, playerId, moveData })
+      makeMoveServer({ gameId, playerId, moveData, move })
 
 
       setMoveFrom("");
@@ -341,47 +371,33 @@ export default function App() {
   }
 
 
-  function onSquareRightClick(square) {
-    // console.log(square , "SQUARE");
-
-    const color = "rgba(0, 0, 255, 0.4)";
-    setRightClickedSquares({
-      ...rightClickedSquares,
-      [square]:
-        rightClickedSquares[square] &&
-          rightClickedSquares[square].backgroundColor === color
-          ? undefined
-          : { backgroundColor: color },
-    });
-  }
-
 
   function onPromotionPieceSelect(piece) {
     if (game.turn() !== getColor().charAt(0)) return false;
 
-    const gameCopy = new Chess(game.fen());
+    setColouredMove({})
     if (piece) {
-
-      gameCopy.move({
+      const move = game.move({
         from: moveFrom,
         to: moveTo,
         promotion: piece.charAt(1).toLowerCase() ?? "q",
       });
 
-      const newGame = new Chess(gameCopy.fen())
-      setGame(newGame)
-      setGameFen(newGame.fen())
-      validateGame(newGame)
+      validateGame(game)
+
+      const moveData = {
+        fen: game.fen(),
+        move: move
+      }
+
+      setColouredMove({
+        [move.to]: { background: "rgba(255, 255, 0, 0.4)" },
+        [move.from]: { background: "rgba(255, 255, 0, 0.3)" }
+      })
+
+      makeMoveServer({ gameId, playerId, moveData })
     }
 
-    const moveData = {
-      fen: gameCopy.fen(),
-      from: moveFrom,
-      to: moveTo,
-      promotion: piece[1]?.toLowerCase() ?? "q",
-    }
-
-    makeMoveServer({ gameId, playerId, moveData })
 
     setMoveFrom("");
     setMoveTo(null);
@@ -399,6 +415,7 @@ export default function App() {
 
   function dragStartHandler(_, sourceSquare) {
     setMoveFrom(sourceSquare)
+    setColouredMove({})
   }
 
 
@@ -525,6 +542,7 @@ export default function App() {
   const boardColor = getColor()
 
 
+
   return (
     <div className='px-2 main'>
       <Socket
@@ -543,7 +561,6 @@ export default function App() {
             boardOrientation={boardColor}
             onPieceDrop={onDrop}
             onSquareClick={onSquareClick}
-            onSquareRightClick={onSquareRightClick}
             onPieceDragBegin={dragStartHandler}
             onDragOverSquare={dragHandler}
             onPromotionPieceSelect={onPromotionPieceSelect}
@@ -555,6 +572,7 @@ export default function App() {
               ...moveSquares,
               ...optionSquares,
               ...rightClickedSquares,
+              ...colouredMove
             }}
 
             promotionToSquare={moveTo}
@@ -565,7 +583,7 @@ export default function App() {
         </div>
       }
       <div className='mt-4'>
-        <p className='font-sans font-bold text-md'> {game.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
+        <p className='font-sans font-bold text-md'> { gameDetails && game?.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
       </div>
 
       <dialog id="my_modal_2" className="border-2 border-green-200 modal">

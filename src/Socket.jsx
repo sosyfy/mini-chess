@@ -1,4 +1,6 @@
+import {  useAtom } from 'jotai';
 import React, { useEffect, useState } from 'react';
+import { playerAtom } from './atoms';
 
 function generateRandomString() {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -12,17 +14,20 @@ function generateRandomString() {
     return randomString;
 }
 
+
+
 const Socket = ({ gameId, setGameId, socket, alert }) => {
     const [color, setColor] = useState('white');
     const [userName, setUserName] = useState('');
-    const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"))
+    const [playerId, setPlayerId] = useAtom(playerAtom)
+    
     useEffect(() => {
         if (!playerId) {
             const generatedPlayerId = generateRandomString();
             localStorage.setItem('playerId', generatedPlayerId);
             setPlayerId(generatedPlayerId)
         }
-    }, [playerId])
+    }, [])
 
     //  create a new game
     const handleSubmit = (e) => {
