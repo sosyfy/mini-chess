@@ -7,11 +7,6 @@ import joinSound from "./assets/sounds/public_sound_standard_SocialNotify.mp3"
 import captureSound from "./assets/sounds/public_sound_standard_Capture.mp3"
 import moveSound from "./assets/sounds/public_sound_standard_Move.mp3"
 import gameEndSound from './assets/sounds/public_sound_standard_GenericNotify.mp3'
-import { useAtom, useAtomValue } from 'jotai';
-import { atomWithStorage } from 'jotai/utils'
-import { playerAtom } from './atoms';
-const gameIdAtom = atomWithStorage(null)
-
 
 
 export default function App() {
@@ -23,10 +18,10 @@ export default function App() {
   const [rightClickedSquares, setRightClickedSquares] = useState({});
   const [moveSquares, setMoveSquares] = useState({});
   const [optionSquares, setOptionSquares] = useState({});
-  const playerId = useAtomValue(playerAtom)
+  const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"))
 
   const [gameEndCause, setGameEndCause] = useState('')
-  const [gameId, setGameId] = useAtom(gameIdAtom);
+  const [gameId, setGameId] = useState(localStorage.getItem('gameId'));
 
   const [gameDetails, setGameDetails] = useState(null);
   const [alert, setAlert] = useState({
@@ -36,8 +31,9 @@ export default function App() {
 
   const [colouredMove, setColouredMove] = useState({})
 
-
   const { sendMessage } = useWebSocket('wss://chess.krescentadventures.com', {
+    retryOnError: true,
+    reconnectAttempts: 15,
     onOpen: () => {
       console.log("connected");
       setAlert({ ...alert, message: `Connected`, color: "green" });
@@ -54,11 +50,9 @@ export default function App() {
     onMessage: (ev) => {
       const eventData = JSON.parse(ev.data)
       const data = eventData.data
-      console.log(eventData.event)
 
       switch (eventData.event) {
         case 'opponent-made-move': {
-          console.log("move", data);
 
           game.move({
             from: data.from,
@@ -79,10 +73,16 @@ export default function App() {
           break;
         }
         case 'game-details': {
+
+          if (data === null) {
+            console.log("nothing");
+            break
+          }
+
           if (!data?.fen) {
-            console.log("sdfgf");
             const chess = new Chess()
-            game?.load(chess.fen())
+            game.clear()
+            game.load(chess.fen())
 
             setGame(chess)
             setGameDetails(data)
@@ -171,12 +171,12 @@ export default function App() {
 
 
   useEffect(() => {
-
     if (gameId !== null) {
       let mess = JSON.stringify({ event: "get-game", data: { gameId: gameId } })
       sendMessage(mess)
+      playSound(joinSound)
     }
-
+    
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -550,11 +550,12 @@ export default function App() {
         setGameId={setGameId}
         socket={sendMessage}
         alert={alert}
+        setAlert={setAlert}
       />
 
 
       {gameDetails &&
-        <div className='max-w-3xl mx-auto mt-32 border border-black rounded shadow-md drop-shadow-2xl shadow-black md:mt-4'>
+        <div className='max-w-3xl mx-auto rounded floating-box md:mt-4'>
           <Chessboard
             id="PremovesEnabled"
             position={game.fen()}
@@ -582,9 +583,12 @@ export default function App() {
 
         </div>
       }
-      <div className='mt-4'>
-        <p className='font-sans font-bold text-md'> { gameDetails && game?.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
-      </div>
+
+      {gameDetails &&
+        <div className='max-w-3xl mx-auto mt-8 text-black'>
+          <p className='font-bold text-black text-md'> {game?.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
+        </div>
+      }
 
       <dialog id="my_modal_2" className="border-2 border-green-200 modal">
         <form method="dialog" className="border border-green-300 modal-box">

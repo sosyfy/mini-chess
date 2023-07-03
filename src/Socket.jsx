@@ -1,6 +1,6 @@
-import {  useAtom } from 'jotai';
-import React, { useEffect, useState } from 'react';
-import { playerAtom } from './atoms';
+
+import React, { useEffect, useState, useRef } from 'react';
+
 
 function generateRandomString() {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -16,19 +16,36 @@ function generateRandomString() {
 
 
 
-const Socket = ({ gameId, setGameId, socket, alert }) => {
+const Socket = ({ gameId, setGameId, socket, alert, setAlert }) => {
     const [color, setColor] = useState('white');
     const [userName, setUserName] = useState('');
-    const [playerId, setPlayerId] = useAtom(playerAtom)
-    
+    const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"))
+
     useEffect(() => {
         if (!playerId) {
             const generatedPlayerId = generateRandomString();
             localStorage.setItem('playerId', generatedPlayerId);
             setPlayerId(generatedPlayerId)
         }
+        
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+    const gameIdRef = useRef(null);
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(gameId)
+            .then(() => {
+                const message = 'Copied to clipboard: ' + gameId;
+                setAlert({ ...alert, message: message, color: "green" });
+                setTimeout(() => {
+                    setAlert({
+                        color: null,
+                        message: null
+                    })
+                }, 1000);
+            })
+
+    };
     //  create a new game
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -48,16 +65,17 @@ const Socket = ({ gameId, setGameId, socket, alert }) => {
         socket(message)
     };
 
-
+    console.log(gameId, "game");
 
     return (
-        <div className='w-full max-w-3xl px-2 mx-auto my-8 lg:px-12'>
+        <div className='w-full max-w-3xl px-2 mx-auto my-3 md:my-8 lg:px-12'>
             <div className="flex justify-between w-full">
-                <button className="btn" onClick={() => window.create.showModal()}> Create New Game </button>
-                <h2 className='px-4 py-3 font-bold text-center rounded-lg bg-slate-700'> {gameId}</h2>
-                <button className="btn" onClick={() => window.join.showModal()}>Join Game </button>
+                <button className="button" onClick={() => window.create.showModal()}> Create New Game </button>
+                {gameId && (<h2 ref={gameIdRef} onClick={copyToClipboard} className='hidden sm:block button'> {gameId}</h2>)}
+                <button className="button" onClick={() => window.join.showModal()}>Join Game </button>
             </div>
-
+            {gameId && (<center><h2 ref={gameIdRef} onClick={copyToClipboard} className='inline-block mx-auto mt-3 text-center sm:hidden button'> {gameId}</h2></center>)}
+            
             <dialog id="create" className="modal modal-middle sm:modal-middle">
                 <form method="dialog" className="modal-box" onSubmit={handleSubmit}>
                     <h3 className="text-lg font-bold text-center">Hello!</h3>
@@ -97,7 +115,7 @@ const Socket = ({ gameId, setGameId, socket, alert }) => {
             </dialog>
 
             {alert.message &&
-                <div id="alert-border-3" className={`flex fixed bottom-0 right-8 left-8  p-4 mb-4 text-${alert.color}-800 border-t-4 border-${alert.color}-300 bg-${alert.color}-50 dark:text-${alert.color}-400 dark:bg-gray-800 dark:border-${alert.color}-800`} role="alert">
+                <div id="alert-border-3" className={`flex fixed bottom-0 right-2 left-2 md:right-8 md:left-8 z-10  p-2 mb-4 text-${alert.color}-800 border-t-4 border-${alert.color}-300 bg-${alert.color}-50 dark:text-${alert.color}-400 dark:bg-gray-800 dark:border-${alert.color}-800`} role="alert">
                     <svg className="flex-shrink-0 w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
                     <div className="ml-3 font-medium text-md">
                         {alert.message}
