@@ -57,11 +57,11 @@ const Socket = ({ gameId, setGameId, socket, alert }) => {
                 <form method="dialog" className="modal-box" onSubmit={handleSubmit}>
                     <h3 className="text-lg font-bold text-center">Hello!</h3>
                     <div className='grid gap-2'>
-                        <label htmlFor="name" className=''>Your name</label>
-                        <input type="text" id='name' onChange={e => setUserName(e.target.value)} required placeholder="Enter your game name" className="w-full input input-bordered input-accent" />
+                        <label className=''>Your name</label>
+                        <input type="text" onChange={e => setUserName(e.target.value)} required placeholder="Enter your game name" className="w-full input input-bordered input-accent" />
                     </div>
                     <div className='grid gap-2 mt-4'>
-                        <label htmlFor="name" className=''>Color to play as</label>
+                        <label className=''>Color to play as</label>
                         <select className="w-full select select-accent" onChange={e => setColor(e.target.value)}>
                             <option disabled defaultValue={"white"}>Black or White pieces?</option>
                             <option value={"white"}>White</option>
@@ -80,8 +80,8 @@ const Socket = ({ gameId, setGameId, socket, alert }) => {
                 <form method="dialog" className="modal-box" onSubmit={handleJoinGame}>
                     <h3 className="text-lg font-bold text-center">Join a game </h3>
                     <div className='grid gap-2'>
-                        <label htmlFor="name" className=''>Game Id</label>
-                        <input type="text" id='name' onChange={e => setGameId(e.target.value)} required placeholder="Enter game ID" className="w-full input input-bordered input-accent" />
+                        <label className=''>Game Id</label>
+                        <input type="text" onChange={e => setGameId(e.target.value)} required placeholder="Enter game ID" className="w-full input input-bordered input-accent" />
                     </div>
 
                     <div className="modal-action">

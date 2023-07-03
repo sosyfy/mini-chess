@@ -3,6 +3,10 @@ import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import Socket from './Socket';
 import useWebSocket from 'react-use-websocket';
+import joinSound from "./assets/sounds/public_sound_standard_SocialNotify.mp3"
+import captureSound from "./assets/sounds/public_sound_standard_Capture.mp3"
+import moveSound from "./assets/sounds/public_sound_standard_Move.mp3"
+import gameEndSound from './assets/sounds/public_sound_standard_GenericNotify.mp3'
 
 
 export default function App() {
@@ -19,27 +23,25 @@ export default function App() {
   const [playerId] = useState(localStorage.getItem("playerId"))
   const [gameEndCause, setGameEndCause] = useState('')
   const [gameId, setGameId] = useState(localStorage.getItem("gameId"));
-  const [setIsConnected] = useState(false);
   const [gameDetails, setGameDetails] = useState(null);
   const [alert, setAlert] = useState({
     color: null,
     message: null
   })
 
-  const { sendMessage } = useWebSocket('wss://chess.krescentadventures.com', {
+  const { sendMessage } = useWebSocket('ws://localhost:3000', {
     onOpen: () => {
       console.log("connected");
+      setAlert({ ...alert, message: `Connected`, color: "green" });
       setTimeout(() => {
         setAlert({
           color: null,
           message: null
         })
-      }, 2000)
+      }, 1000)
 
       let mess = JSON.stringify({ event: "get-game", data: { gameId: gameId } })
       sendMessage(mess)
-      
-      setIsConnected(true)
     },
     onMessage: (ev) => {
       const eventData = JSON.parse(ev.data)
@@ -57,11 +59,10 @@ export default function App() {
           break;
         }
         case 'ping': {
-          setIsConnected(true)
           break;
         }
         case 'game-details': {
-          if (!data.fen) {
+          if (!data?.fen) {
             console.log("sdfgf");
             const chess = new Chess()
             game.reset()
@@ -153,29 +154,31 @@ export default function App() {
     },
 
     onClose: () => {
-      setIsConnected(false)
       setAlert({ ...alert, message: "You have disconnected refresh the page to get back", color: "red" });
       console.log('WebSocket connection closed');
     },
 
     onError: (event) => {
-      setIsConnected(false)
       console.log("error", event);
     }
   });
 
- 
+
 
   useEffect(() => {
-    
+
     if (gameId !== null) {
       let mess = JSON.stringify({ event: "get-game", data: { gameId: gameId } })
       sendMessage(mess)
     }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId])
 
+  function makeSound(move) {
+    const gam = game.fen()
+    console.log(gam);
+  }
 
   function onDrop(sourceSquare, targetSquare, piece) {
 
@@ -213,6 +216,7 @@ export default function App() {
   function makeMoveServer({ gameId, playerId, moveData }) {
     let message = JSON.stringify({ event: "make-move", data: { gameId, playerId, moveData } })
     sendMessage(message)
+    makeSound()
   }
 
 
@@ -248,7 +252,7 @@ export default function App() {
 
   function onSquareClick(square) {
     setRightClickedSquares({});
-    if (game.turn() !== getColor().charAt(0)) return false;
+    // if (game.turn() !== getColor().charAt(0)) return false;
 
     // from square
     if (!moveFrom) {
@@ -300,11 +304,12 @@ export default function App() {
 
       // is normal move
       const gameCopy = new Chess(game.fen());
-      const move = gameCopy.move({
+      const move = game.move({
         from: moveFrom,
         to: square,
         promotion: "q",
       });
+
 
       // if invalid, setMoveFrom and getMoveOptions
       if (move === null) {
@@ -313,6 +318,7 @@ export default function App() {
         return;
       }
 
+      console.log(gameCopy.history());
 
       setGame(gameCopy)
       setGameFen(gameCopy.fen())
@@ -320,9 +326,7 @@ export default function App() {
 
       const moveData = {
         fen: gameCopy.fen(),
-        from: moveFrom,
-        to: moveTo,
-        promotion: "q",
+        move: move
       }
 
 
@@ -355,7 +359,7 @@ export default function App() {
   function onPromotionPieceSelect(piece) {
     if (game.turn() !== getColor().charAt(0)) return false;
 
-    const gameCopy = new Chess(game.fen()); 
+    const gameCopy = new Chess(game.fen());
     if (piece) {
 
       gameCopy.move({
@@ -508,8 +512,6 @@ export default function App() {
   }
 
 
-
-
   function getColor() {
     let color = gameDetails?.color
     if (playerId === gameDetails?.player1Id) {
@@ -524,7 +526,7 @@ export default function App() {
 
 
   return (
-    <div>
+    <div className='px-2 main'>
       <Socket
         gameId={gameId}
         setGameId={setGameId}
@@ -534,10 +536,10 @@ export default function App() {
 
 
       {gameDetails &&
-        <div className='max-w-3xl mx-auto mt-32 md:mt-4'>
+        <div className='max-w-3xl mx-auto mt-32 border border-black rounded shadow-md drop-shadow-2xl shadow-black md:mt-4'>
           <Chessboard
             id="PremovesEnabled"
-            position={gameFen}
+            position={game.fen()}
             boardOrientation={boardColor}
             onPieceDrop={onDrop}
             onSquareClick={onSquareClick}
@@ -560,11 +562,11 @@ export default function App() {
             ref={chessboardRef}
           />
 
-          <div className='mt-4'>
-            <p className='font-sans font-bold text-md'> {game.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
-          </div>
         </div>
       }
+      <div className='mt-4'>
+        <p className='font-sans font-bold text-md'> {game.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
+      </div>
 
       <dialog id="my_modal_2" className="border-2 border-green-200 modal">
         <form method="dialog" className="border border-green-300 modal-box">
