@@ -14,7 +14,12 @@
     width: 100vw;
     overflow: hidden;
 }
-
+.modal-box {
+    background-image: url("./assets/back.jpg");
+    background-size: cover;
+    background-position: center;
+    overflow: hidden;
+}
 *{
     font-family: 'Kalam', cursive;
     font-weight: 700;
@@ -28,6 +33,8 @@
 
 .button {
     align-self: center;
+    /* background-color: #efa338; */
+
     background-color: #fbce90;
     background-image: none;
     background-position: 0 90%;
@@ -45,7 +52,7 @@
     font-weight: bolder;
     line-height: 23px;
     outline: none;
-    padding: .65rem;
+    padding: .4rem .6rem;
     text-decoration: none;
     transition: all 235ms ease-in-out;
     border-bottom-left-radius: 15px 255px;
@@ -57,11 +64,6 @@
     touch-action: manipulation;
 }
 
-@media (min-width: 768px) {
-    .button {
-        font-size: 1.24rem;
-    }
-}
 
 .button:hover {
     box-shadow: rgba(0, 0, 0, .3) 2px 8px 8px -5px;
@@ -70,4 +72,33 @@
 
 .button:focus {
     box-shadow: rgba(0, 0, 0, .3) 2px 8px 4px -6px;
+}
+
+.radio-label {
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+.radio-image {
+  width: 6.5rem; 
+  height: 6.5rem; 
+}
+
+input[type="radio"] {
+  display: none;
+}
+
+input[type="radio"]:checked + .radio-label {
+    border: 4px solid #b16800;
+}
+
+@media (min-width: 768px) {
+    .button {
+        font-size: 1.24rem;
+        padding: .6rem .65rem;
+    }
+    .radio-image {
+        width: 10rem;
+        height: 10rem;
+    }
 }

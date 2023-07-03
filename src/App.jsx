@@ -33,7 +33,7 @@ export default function App() {
 
   const { sendMessage } = useWebSocket('wss://chess.krescentadventures.com', {
     retryOnError: true,
-    reconnectAttempts: 15,
+    shouldReconnect: () => true,
     onOpen: () => {
       console.log("connected");
       setAlert({ ...alert, message: `Connected`, color: "green" });
@@ -159,7 +159,7 @@ export default function App() {
     },
 
     onClose: () => {
-      setAlert({ ...alert, message: "You have disconnected refresh the page to get back", color: "red" });
+      setAlert({ ...alert, message: "Disconnected trying to reconnect ...", color: "red" });
       console.log('WebSocket connection closed');
     },
 
@@ -544,7 +544,7 @@ export default function App() {
 
 
   return (
-    <div className='px-2 main'>
+    <div className='md:px-2 main'>
       <Socket
         gameId={gameId}
         setGameId={setGameId}
@@ -555,7 +555,7 @@ export default function App() {
 
 
       {gameDetails &&
-        <div className='max-w-3xl mx-auto rounded floating-box md:mt-4'>
+        <div className='max-w-3xl mx-auto mt-10 md:rounded floating-box md:mt-4'>
           <Chessboard
             id="PremovesEnabled"
             position={game.fen()}
@@ -566,7 +566,6 @@ export default function App() {
             onDragOverSquare={dragHandler}
             onPromotionPieceSelect={onPromotionPieceSelect}
             customBoardStyle={{
-              borderRadius: "4px",
               boxShadow: "0 2px 10px rgba(0,0,0,.5)",
             }}
             customSquareStyles={{
@@ -586,17 +585,17 @@ export default function App() {
 
       {gameDetails &&
         <div className='max-w-3xl mx-auto mt-8 text-black'>
-          <p className='font-bold text-black text-md'> {game?.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
+          <p className='ml-2 text-lg font-bold text-black'> {game?.turn() == "b" ? "Black's turn to move" : "White's turn to move"} </p>
         </div>
       }
 
       <dialog id="my_modal_2" className="border-2 border-green-200 modal">
         <form method="dialog" className="border border-green-300 modal-box">
-          <h3 className="text-lg font-bold text-center">Hello! <span className='text-green-400 uppercase'>{localStorage.getItem("userName")} </span></h3>
-          <p className="py-4 text-center font-semibold text-[2rem] lg:text-[4rem]">{gameEndCause}</p>
+          <h3 className="text-lg font-bold text-center text-black">Hello!</h3>
+          <p className="py-4 text-black text-center font-semibold text-[2rem] lg:text-[4rem]">{gameEndCause}</p>
         </form>
         <form method="dialog" className="modal-backdrop">
-          <button>close</button>
+          <button className='w-full mx-2 text-center text-black button'>Close Modal</button>
         </form>
       </dialog>
     </div>

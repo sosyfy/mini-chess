@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-
-
+import king from "./assets/king.png"
+import cancel from "./assets/icons8-close.svg"
 function generateRandomString() {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let randomString = '';
@@ -18,8 +18,9 @@ function generateRandomString() {
 
 const Socket = ({ gameId, setGameId, socket, alert, setAlert }) => {
     const [color, setColor] = useState('white');
-    const [userName, setUserName] = useState('');
     const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"))
+    const [joinId, setJoinId] = useState(null)
+
 
     useEffect(() => {
         if (!playerId) {
@@ -27,11 +28,11 @@ const Socket = ({ gameId, setGameId, socket, alert, setAlert }) => {
             localStorage.setItem('playerId', generatedPlayerId);
             setPlayerId(generatedPlayerId)
         }
-        
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    const gameIdRef = useRef(null);
+
     const copyToClipboard = () => {
         navigator.clipboard.writeText(gameId)
             .then(() => {
@@ -50,8 +51,7 @@ const Socket = ({ gameId, setGameId, socket, alert, setAlert }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
         window.create.close()
-
-        localStorage.setItem("userName", userName)
+        setColor(null)
         let message = JSON.stringify({ event: 'create-game', data: { playerId: playerId, color: color } });
         socket(message)
     };
@@ -60,56 +60,67 @@ const Socket = ({ gameId, setGameId, socket, alert, setAlert }) => {
     const handleJoinGame = (e) => {
         e.preventDefault();
         window.join.close();
-
+        setGameId(joinId)
         let message = JSON.stringify({ event: 'join-game', data: { gameId: gameId, playerId: playerId } });
         socket(message)
     };
 
+    const handleCloseCreate = () => {
+        setColor(null)
+        window.create.close()
+    }
+
+    const handleJoinClose = () => {
+        setJoinId(null)
+        window.join.close()
+    }
     console.log(gameId, "game");
 
     return (
         <div className='w-full max-w-3xl px-2 mx-auto my-3 md:my-8 lg:px-12'>
             <div className="flex justify-between w-full">
                 <button className="button" onClick={() => window.create.showModal()}> Create New Game </button>
-                {gameId && (<h2 ref={gameIdRef} onClick={copyToClipboard} className='hidden sm:block button'> {gameId}</h2>)}
+                {gameId && (<h2 onClick={copyToClipboard} className='hidden sm:block button'> {gameId}</h2>)}
                 <button className="button" onClick={() => window.join.showModal()}>Join Game </button>
             </div>
-            {gameId && (<center><h2 ref={gameIdRef} onClick={copyToClipboard} className='inline-block mx-auto mt-3 text-center sm:hidden button'> {gameId}</h2></center>)}
-            
-            <dialog id="create" className="modal modal-middle sm:modal-middle">
-                <form method="dialog" className="modal-box" onSubmit={handleSubmit}>
-                    <h3 className="text-lg font-bold text-center">Hello!</h3>
-                    <div className='grid gap-2'>
-                        <label className=''>Your name</label>
-                        <input type="text" onChange={e => setUserName(e.target.value)} required placeholder="Enter your game name" className="w-full input input-bordered input-accent" />
-                    </div>
-                    <div className='grid gap-2 mt-4'>
-                        <label className=''>Color to play as</label>
-                        <select className="w-full select select-accent" onChange={e => setColor(e.target.value)}>
-                            <option disabled defaultValue={"white"}>Black or White pieces?</option>
-                            <option value={"white"}>White</option>
-                            <option value={"black"}>Black</option>
-                        </select>
-                    </div>
-                    <div className="modal-action">
+            {gameId && (<center><h2 onClick={copyToClipboard} className='inline-block mx-auto mt-3 text-center sm:hidden button'> {gameId}</h2></center>)}
 
-                        <button type="submit" className="btn">Create</button>
-                        <button className="btn" type='button' onClick={() => window.create.close()}>Close</button>
+            <dialog id="create" className="modal modal-middle sm:modal-middle">
+                <form method="dialog" className="relative modal-box" onSubmit={handleSubmit}>
+                    <h3 className="text-2xl font-bold text-center text-black">Hello!</h3>
+                    <p className='text-2xl text-center text-black'>Choose a color to play as </p>
+                    <div className='flex justify-between p-0 m-0 mt-4'>
+                        <input type="radio" id="option2" name="options" value="white" onChange={() => setColor("white")} required />
+                        <label for="option2" className="p-2 md:p-5 bg-[#fbce90]/50 border-4 rounded-3xl radio-label">
+                            <img src={king} alt="Option 2" className="radio-image filter invert grayscale-0 contrast-200" />
+                        </label>
+                        <input type="radio" id="option1" name="options" value="black" onChange={() => setColor("black")} required />
+                        <label for="option1" className="p-2 md:p-5 bg-[#fbce90]/50 border-4 rounded-3xl radio-label">
+                            <img src={king} alt="Option 2" className="radio-image" />
+                        </label>
+                    </div>
+
+                    <p className='mt-4 text-lg bg-[#fbce90]/60 text-center text-black'>A game Id will be created at the top.Click to copy and send to a friend.First person to Join will play with You</p>
+
+                    <div className="modal-action">
+                        <button type='button' className='absolute top-3 right-3' onClick={() => handleCloseCreate()}><img className="h-10 md:h-12" src={cancel} /></button>
+                        <button type="submit" disabled={color === null ? true : false} className="w-full text-center button">Create Game</button>
                     </div>
                 </form>
             </dialog>
 
             <dialog id="join" className="modal modal-middle sm:modal-middle">
-                <form method="dialog" className="modal-box" onSubmit={handleJoinGame}>
-                    <h3 className="text-lg font-bold text-center">Join a game </h3>
+                <form method="dialog" className="relative modal-box" onSubmit={handleJoinGame}>
+                    <h3 className="text-2xl font-bold text-center text-black">Join a game </h3>
                     <div className='grid gap-2'>
-                        <label className=''>Game Id</label>
-                        <input type="text" onChange={e => setGameId(e.target.value)} required placeholder="Enter game ID" className="w-full input input-bordered input-accent" />
+                        <label className='text-black'>Game Id</label>
+                        <input type="text"  onChange={e => setJoinId(e.target.value)} required placeholder="Enter a valid game ID" className="w-full input bg-[#fbce90]/70 placeholder:text-black text-black border-2 border-white/60 focus:ring-0 focus:border-[#b16800]" />
                     </div>
 
                     <div className="modal-action">
-                        <button type="submit" className="btn">Join</button>
-                        <button className="btn" type='button' onClick={() => window.join.close()}>Close</button>
+
+                        <button type='button' className='absolute top-3 right-3' onClick={() => handleJoinClose()}><img className="h-10 md:h-12" src={cancel} /></button>
+                        <button type="submit" disabled={ joinId === null ? true : false} className="w-full text-center button">Join Game</button>
                     </div>
                 </form>
             </dialog>
