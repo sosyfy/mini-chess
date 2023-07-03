@@ -19,7 +19,7 @@ export default function App() {
   const [moveSquares, setMoveSquares] = useState({});
   const [optionSquares, setOptionSquares] = useState({});
   const [playerId, setPlayerId] = useState(localStorage.getItem("playerId"))
-
+  const [opponentJoined, setOpponentJoined] = useState(false)
   const [gameEndCause, setGameEndCause] = useState('')
   const [gameId, setGameId] = useState(localStorage.getItem('gameId'));
 
@@ -79,6 +79,12 @@ export default function App() {
             break
           }
 
+          if (data.player2Id !== null) {
+            setOpponentJoined(false)
+          } else {
+            setOpponentJoined(true)
+          }
+
           if (!data?.fen) {
             const chess = new Chess()
             game.clear()
@@ -98,14 +104,19 @@ export default function App() {
           break;
         }
         case 'game-created': {
-          setAlert({ ...alert, message: `New game created with ID ${gameId}`, color: "green" });
+          setAlert({ ...alert, message: `New game created with ID ${data.gameId}`, color: "green" });
           setTimeout(() => {
             setAlert({
               color: null,
               message: null
             })
           }, 4000)
+          setColouredMove({})
+          setOpponentJoined(false)
           playSound(joinSound)
+          setGameId(data.gameId)
+          localStorage.setItem("gameId", data.gameId)
+
           if (!data.fen) {
             const chess = new Chess()
             game.reset()
@@ -116,8 +127,6 @@ export default function App() {
             setGameDetails(data)
           }
 
-          setGameId(data.gameId)
-          localStorage.setItem("gameId", data.gameId)
           break
         }
 
@@ -125,6 +134,7 @@ export default function App() {
           const { gameId, gameData } = data
           playSound(joinSound)
           setGameDetails(gameData)
+          setOpponentJoined(true)
           console.log(`Joined game with ID ${gameId}`);
           setAlert({ ...alert, message: `Joined game with ID ${gameId}`, color: "green" });
           setTimeout(() => {
@@ -134,7 +144,13 @@ export default function App() {
             })
           }, 4000)
 
-          game.load(gameData.fen)
+          const chess = new Chess()
+          game.reset()
+          game.clear()
+          game.load(chess.fen())
+
+          setGame(chess)
+
           validateGame(game)
           setGameDetails(gameData)
           setGameId(gameId)
@@ -176,7 +192,7 @@ export default function App() {
       sendMessage(mess)
       playSound(joinSound)
     }
-    
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -215,7 +231,20 @@ export default function App() {
   function onDrop(sourceSquare, targetSquare, piece) {
 
     if (game.turn() !== getColor().charAt(0)) return false;
-    console.log("game", game);
+    if (!opponentJoined) {
+      setAlert({
+        message: "Waiting for opponent to join",
+        color: "green"
+      })
+      setTimeout(() => {
+        setAlert({
+          color: null,
+          message: null
+        })
+      }, 3000)
+      return false
+    }
+
     setColouredMove({})
     const move = game.move({
       from: sourceSquare,
@@ -284,8 +313,21 @@ export default function App() {
 
     setRightClickedSquares({});
     if (game.turn() !== getColor().charAt(0)) return false;
+    if (!opponentJoined) {
+      setAlert({
+        message: "Waiting for opponent to join",
+        color: "green"
+      })
+      setTimeout(() => {
+        setAlert({
+          color: null,
+          message: null
+        })
+      }, 3000)
+      return false
+    }
+
     setColouredMove({})
-    // from square
     if (!moveFrom) {
       const hasMoveOptions = getMoveOptions(square);
       if (hasMoveOptions) setMoveFrom(square);

@@ -54,6 +54,10 @@ const Socket = ({ gameId, setGameId, socket, alert, setAlert }) => {
         setColor(null)
         let message = JSON.stringify({ event: 'create-game', data: { playerId: playerId, color: color } });
         socket(message)
+
+        const radioButtons = document.getElementsByName('options');
+        radioButtons.forEach(button => button.checked = false);
+
     };
 
     // join an existing game
@@ -61,12 +65,14 @@ const Socket = ({ gameId, setGameId, socket, alert, setAlert }) => {
         e.preventDefault();
         window.join.close();
         setGameId(joinId)
-        let message = JSON.stringify({ event: 'join-game', data: { gameId: gameId, playerId: playerId } });
+        let message = JSON.stringify({ event: 'join-game', data: { gameId: joinId, playerId: playerId } });
         socket(message)
     };
 
     const handleCloseCreate = () => {
         setColor(null)
+        const radioButtons = document.getElementsByName('options');
+        radioButtons.forEach(button => button.checked = false);
         window.create.close()
     }
 
@@ -114,13 +120,13 @@ const Socket = ({ gameId, setGameId, socket, alert, setAlert }) => {
                     <h3 className="text-2xl font-bold text-center text-black">Join a game </h3>
                     <div className='grid gap-2'>
                         <label className='text-black'>Game Id</label>
-                        <input type="text"  onChange={e => setJoinId(e.target.value)} required placeholder="Enter a valid game ID" className="w-full input bg-[#fbce90]/70 placeholder:text-black text-black border-2 border-white/60 focus:ring-0 focus:border-[#b16800]" />
+                        <input type="text" onChange={e => setJoinId(e.target.value)} required placeholder="Enter a valid game ID" className="w-full input bg-[#fbce90]/70 placeholder:text-black text-black border-2 border-white/60 focus:ring-0 focus:border-[#b16800]" />
                     </div>
 
                     <div className="modal-action">
 
                         <button type='button' className='absolute top-3 right-3' onClick={() => handleJoinClose()}><img className="h-10 md:h-12" src={cancel} /></button>
-                        <button type="submit" disabled={ joinId === null ? true : false} className="w-full text-center button">Join Game</button>
+                        <button type="submit" disabled={joinId === null ? true : false} className="w-full text-center button">Join Game</button>
                     </div>
                 </form>
             </dialog>
