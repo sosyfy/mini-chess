@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import king from "./assets/king.png"
 import cancel from "./assets/icons8-close.svg"
 
@@ -48,7 +48,7 @@ const Socket = ({ gameId, setGameId, socket, alert, setAlert }) => {
             })
 
     };
-    //  create a new game
+   
     const handleSubmit = (e) => {
         e.preventDefault();
         window.create.close()
@@ -61,7 +61,7 @@ const Socket = ({ gameId, setGameId, socket, alert, setAlert }) => {
 
     };
 
-    // join an existing game
+  
     const handleJoinGame = (e) => {
         e.preventDefault();
         window.joinModal.close();

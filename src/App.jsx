@@ -36,7 +36,6 @@ export default function App() {
     retryOnError: true,
     shouldReconnect: () => true,
     onOpen: () => {
-      console.log("connected");
       setAlert({ ...alert, message: `Connected`, color: "green" });
       setTimeout(() => {
         setAlert({
@@ -51,11 +50,8 @@ export default function App() {
     onMessage: (ev) => {
       const eventData = JSON.parse(ev.data)
       const data = eventData.data
-      console.log(eventData);
-      
       switch (eventData.event) {
         case 'opponent-made-move': {
-
           game.move({
             from: data.from,
             to: data.to,
@@ -71,13 +67,8 @@ export default function App() {
 
           break;
         }
-        case 'ping': {
-          break;
-        }
         case 'game-details': {
-
           if (data === null) {
-            console.log("nothing");
             break
           }
 
@@ -133,7 +124,6 @@ export default function App() {
 
         case 'player-joined': {
           const { gameId, gameData } = data
-          console.log(gameData);
           setGameId(gameId)
           setGameDetails(gameData)
           localStorage.setItem("gameId", gameId)
@@ -148,7 +138,6 @@ export default function App() {
             })
           }, 4000)
           
-          console.log(`Joined game with ID ${gameId}`);
           break
         }
 
@@ -170,7 +159,6 @@ export default function App() {
 
     onClose: () => {
       setAlert({ ...alert, message: <span className='text-lg font-bold animate-pulse'>Reconnecting...</span>, color: "red" });
-      console.log('WebSocket connection closed');
     },
 
     onError: (event) => {
@@ -190,22 +178,16 @@ export default function App() {
 
   function makeSound(move) {
     if (move.flags.includes('c')) {
-      // Captured piece
       playSound(captureSound);
     } else if (move.flags.includes('e')) {
-      // En passant capture
       playSound(captureSound);
     } else if (move.flags.includes('k')) {
-      // Kingside castle
       playSound(moveSound);
     } else if (move.flags.includes('q')) {
-      // Queenside castle
       playSound(moveSound);
     } else if (move.flags.includes('p')) {
-      // Promoted to a new piece
       playSound(moveSound);
     } else {
-      // Normal move
       playSound(moveSound);
     }
 
@@ -266,7 +248,6 @@ export default function App() {
   function makeMoveServer({ gameId, playerId, moveData, move }) {
     let message = JSON.stringify({ event: "make-move", data: { gameId, playerId, moveData } })
     sendMessage(message)
-    console.log("sent", message);
     makeSound(move)
   }
 
@@ -329,7 +310,6 @@ export default function App() {
 
     // to square
     if (!moveTo) {
-      // check if valid move before showing dialog
       const moves = game.moves({
         moveFrom,
         verbose: true,
@@ -340,19 +320,14 @@ export default function App() {
       );
 
 
-      // not a valid move
       if (!foundMove) {
-        // check if clicked on new piece
         const hasMoveOptions = getMoveOptions(square);
-        // if new piece, setMoveFrom, otherwise clear moveFrom
         setMoveFrom(hasMoveOptions ? square : "");
         return;
       }
 
-      // valid move
       setMoveTo(square);
 
-      // if promotion move
       if (
         (foundMove.color === "w" &&
           foundMove.piece === "p" &&
@@ -363,11 +338,9 @@ export default function App() {
       ) {
         setShowPromotionDialog(true);
         setMoveFrom(moveFrom)
-        // setMoveTo(moveTo)
         return;
       }
 
-      // is normal move
       const move = game.move({
         from: moveFrom,
         to: square,
@@ -378,14 +351,13 @@ export default function App() {
         [move.to]: { background: "rgba(255, 255, 0, 0.45)" },
         [move.from]: { background: "rgba(255, 255, 0, 0.4)" }
       })
-      // if invalid, setMoveFrom and getMoveOptions
+     
       if (move === null) {
         const hasMoveOptions = getMoveOptions(square);
         if (hasMoveOptions) setMoveFrom(square);
         return;
       }
 
-      console.log(game.history());
 
       validateGame(game)
 
@@ -595,7 +567,7 @@ export default function App() {
           }
           
           <Chessboard
-            id="PremovesEnabled"
+            id="my-board"
             position={game.fen()}
             boardOrientation={boardColor}
             onPieceDrop={onDrop}
