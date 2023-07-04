@@ -66,7 +66,7 @@ export default function App() {
             [data.to]: { background: "rgba(255, 255, 0, 0.4)" },
             [data.from]: { background: "rgba(255, 255, 0, 0.3)" }
           })
-
+          makeSound(data)
           validateGame(game)
 
           break;
