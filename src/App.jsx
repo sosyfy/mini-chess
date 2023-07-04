@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import cancel from "./assets/icons8-close.svg"
 import { Chess } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import Socket from './Socket';
@@ -50,7 +51,8 @@ export default function App() {
     onMessage: (ev) => {
       const eventData = JSON.parse(ev.data)
       const data = eventData.data
-
+      console.log(eventData);
+      
       switch (eventData.event) {
         case 'opponent-made-move': {
 
@@ -79,7 +81,7 @@ export default function App() {
             break
           }
 
-          if (data.player2Id !== null) {
+          if (data.player2Id === null) {
             setOpponentJoined(false)
           } else {
             setOpponentJoined(true)
@@ -93,7 +95,6 @@ export default function App() {
             setGame(chess)
             setGameDetails(data)
           } else {
-            console.log("initial", data);
             game.load(data.fen)
             validateGame(game)
             setGameDetails(data)
@@ -132,10 +133,13 @@ export default function App() {
 
         case 'player-joined': {
           const { gameId, gameData } = data
-          playSound(joinSound)
+          console.log(gameData);
+          setGameId(gameId)
           setGameDetails(gameData)
+          localStorage.setItem("gameId", gameId)
           setOpponentJoined(true)
-          console.log(`Joined game with ID ${gameId}`);
+          playSound(joinSound)
+          game.reset()
           setAlert({ ...alert, message: `Joined game with ID ${gameId}`, color: "green" });
           setTimeout(() => {
             setAlert({
@@ -143,18 +147,8 @@ export default function App() {
               message: null
             })
           }, 4000)
-
-          const chess = new Chess()
-          game.reset()
-          game.clear()
-          game.load(chess.fen())
-
-          setGame(chess)
-
-          validateGame(game)
-          setGameDetails(gameData)
-          setGameId(gameId)
-          localStorage.setItem("gameId", gameId)
+          
+          console.log(`Joined game with ID ${gameId}`);
           break
         }
 
@@ -175,7 +169,7 @@ export default function App() {
     },
 
     onClose: () => {
-      setAlert({ ...alert, message: "Disconnected trying to reconnect ...", color: "red" });
+      setAlert({ ...alert, message: <span className='text-lg font-bold animate-pulse'>Reconnecting...</span>, color: "red" });
       console.log('WebSocket connection closed');
     },
 
@@ -190,9 +184,7 @@ export default function App() {
     if (gameId !== null) {
       let mess = JSON.stringify({ event: "get-game", data: { gameId: gameId } })
       sendMessage(mess)
-      playSound(joinSound)
     }
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -597,7 +589,11 @@ export default function App() {
 
 
       {gameDetails &&
-        <div className='max-w-3xl mx-auto mt-10 md:rounded floating-box md:mt-4'>
+        <div className='grid max-w-3xl mx-auto mt-10 md:rounded floating-box md:mt-4'>
+          { game.turn() !== getColor().charAt(0) &&
+            <p className='left-0 justify-end ml-auto button w-fit animate-pulse'>Waiting for opponent's to move</p>
+          }
+          
           <Chessboard
             id="PremovesEnabled"
             position={game.fen()}
@@ -631,13 +627,13 @@ export default function App() {
         </div>
       }
 
-      <dialog id="my_modal_2" className="border-2 border-green-200 modal">
-        <form method="dialog" className="border border-green-300 modal-box">
-          <h3 className="text-lg font-bold text-center text-black">Hello!</h3>
+      <dialog id="my_modal_2" className="modal">
+        <form method="dialog" className="relative border border-black shadow-lg modal-box">
+          <h3 className="text-2xl font-bold text-center text-black">Game Results!</h3>
           <p className="py-4 text-black text-center font-semibold text-[2rem] lg:text-[4rem]">{gameEndCause}</p>
+          <button className='absolute top-3 right-3'><img className="h-10 md:h-12" src={cancel} /></button>
         </form>
-        <form method="dialog" className="modal-backdrop">
-          <button className='w-full mx-2 text-center text-black button'>Close Modal</button>
+        <form method="dialog" className="bg-white/40 modal-backdrop">
         </form>
       </dialog>
     </div>
